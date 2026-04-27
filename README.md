@@ -4,7 +4,7 @@
 
 Template by [Riccardo Tommasini](riccardotommasini.com/) from [INSA Lyon](https://www.insa-lyon.fr/).
 
-Students: **[To be assigned]**
+Students: **William Barran - Arnaud Malle - Ashwine Trivaroul - Élodie Duverger - Nathan Vanneste**
 
 ### Abstract
 
