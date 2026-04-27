@@ -3,13 +3,13 @@ import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 
 @Injectable()
-export class GroupService {
+export class GroupsService {
   create(createGroupDto: CreateGroupDto) {
     return 'This action adds a new group';
   }
 
   findAll() {
-    return `This action returns all group`;
+    return `This action returns all groups`;
   }
 
   findOne(id: number) {
