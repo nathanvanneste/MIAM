@@ -48,6 +48,35 @@ $ npm run start:prod
 
 L'API est disponible sur `http://localhost:3000`.
 
+## Exposer l'API (accès depuis mobile)
+
+Pour tester l’application depuis un téléphone (Expo Go), il est nécessaire d’exposer l’API via un tunnel.
+
+### Installation de Cloudflare Tunnel
+
+```bash
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb
+sudo dpkg -i cloudflared.deb
+rm cloudflared.deb
+```
+
+### Lancement du tunnel (Dans un autre terminal)
+
+Après avoir démarré le backend (cf. `Compile and run the project`), lancer le tunnel :
+```bash
+cloudflared tunnel --url http://localhost:3000
+```
+
+Une URL publique sera générée, par exemple : `https://concentrate-jewelry-belief-phones.trycloudflare.com`
+
+Cette URL permet d’accéder à l’API depuis un appareil externe (téléphone, réseau différent, etc.)
+
+- ⚠️ L’URL change à chaque lancement du tunnel
+- ⚠️ Le terminal doit rester ouvert pour que le tunnel reste actif
+
+
+
+
 ## Run tests
 
 ```bash
