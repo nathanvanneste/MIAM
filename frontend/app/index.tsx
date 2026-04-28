@@ -1,17 +1,9 @@
+import RecipeScreen from "@/src/screens/RecipeScreen";
 import { Text, View } from "react-native";
-import { useEffect, useState } from "react";
-import { getUsers } from "../src/services/users.service";
 
 export default function Index() {
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    getUsers()
-      .then(setMessage)
-      .catch(() => setMessage("Erreur API"));
-  }, []);
-
   return (
+    /*<RecipeScreen />*/
     <View
       style={{
         flex: 1,
@@ -20,7 +12,6 @@ export default function Index() {
       }}
     >
       <Text>Edit app/index.tsx to edit this screen.</Text>
-      <Text>{message}</Text>
     </View>
   );
 }
