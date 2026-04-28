@@ -38,7 +38,7 @@ EXPO_PUBLIC_API_URL=http://localhost:3000
     2. Copier l’URL générée (ex : `https://xxxx.trycloudflare.com`)
     3. Mettre à jour :
     ```bash
-    EXPO_PUBLIC_API_URL=https://xxxx.trycloudflare.com
+    EXPO_PUBLIC_API_URL=https://xxxx.trycloudflare.com # Attention à ne pas mettre le / à la fin
     ```
 | ⚠️ Cette URL change à chaque lancement du tunnel.
 

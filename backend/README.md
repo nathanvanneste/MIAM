@@ -60,14 +60,14 @@ sudo dpkg -i cloudflared.deb
 rm cloudflared.deb
 ```
 
-### Lancement du tunnel
+### Lancement du tunnel (Dans un autre terminal)
 
 Après avoir démarré le backend (cf. `Compile and run the project`), lancer le tunnel :
 ```bash
 cloudflared tunnel --url http://localhost:3000
 ```
 
-Une URL publique sera générée, par exemple : `https://xxxx.trycloudflare.com`
+Une URL publique sera générée, par exemple : `https://concentrate-jewelry-belief-phones.trycloudflare.com`
 
 Cette URL permet d’accéder à l’API depuis un appareil externe (téléphone, réseau différent, etc.)
 
