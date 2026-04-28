@@ -9,6 +9,43 @@ Application mobile développée avec **Expo**, **React Native** et **TypeScript*
 - [Expo Go](https://expo.dev/client) installé sur votre téléphone (iOS ou Android)
 - Backend lancé en local (voir le README du backend)
 
+## Variables d'environnement
+
+Créez un fichier `.env` à la racine du projet à partir du template :
+
+```bash
+cp .env.example .env
+```
+
+Remplissez ensuite vos valeurs dans `.env` :
+
+```env
+EXPO_PUBLIC_API_URL=http://localhost:3000
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_url_here
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+```
+### API backend
+
+- En local sans tunnel :
+```bash
+EXPO_PUBLIC_API_URL=http://localhost:3000
+```
+
+- Avec tunnel Cloudflare (recommandé) :
+    1. Suivre les instructions du backend pour lancer le tunnel :
+    cf. `backend/README.md`
+
+    2. Copier l’URL générée (ex : `https://xxxx.trycloudflare.com`)
+    3. Mettre à jour :
+    ```bash
+    EXPO_PUBLIC_API_URL=https://xxxx.trycloudflare.com
+    ```
+| ⚠️ Cette URL change à chaque lancement du tunnel.
+
+### Supabase
+
+> Les clés Supabase sont disponibles sur [supabase.com](https://supabase.com) → votre projet → **Settings → API**. La `SERVICE_ROLE_KEY` ne doit jamais être partagée publiquement ni envoyée au frontend.
+
 ## Installation
 
 ```bash
