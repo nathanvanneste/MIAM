@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { CreateIngredientDto } from './dto/create-ingredient.dto';
 import { UpdateIngredientDto } from './dto/update-ingredient.dto';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class IngredientsService {
+  constructor(private readonly prisma: PrismaService) {}
+
   create(createIngredientDto: CreateIngredientDto) {
     return 'This action adds a new ingredient';
   }
@@ -13,7 +16,11 @@ export class IngredientsService {
   }
 
   findOne(id: number) {
-    return `This action returns a #${id} ingredient`;
+    return this.prisma.ingredient.findUnique({
+      where: {
+        ingredientID: id,
+      },
+    });
   }
 
   update(id: number, updateIngredientDto: UpdateIngredientDto) {

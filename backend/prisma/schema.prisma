@@ -1,0 +1,225 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  BLOCKED
+}
+
+model User {
+  userID    Int      @id @default(autoincrement())
+  firstName String
+  lastName  String
+  email     String   @unique
+  avatar    String?
+  pseudo    String   @unique
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  recipes      Recipe[]
+  reviews      Review[]
+  shoppingList ShoppingList?
+
+  sentFriendships     Friendship[] @relation("FriendshipRequester")
+  receivedFriendships Friendship[] @relation("FriendshipReceiver")
+
+  groupMemberships GroupMember[]
+}
+
+model Friendship {
+  friendshipID Int              @id @default(autoincrement())
+  requesterID  Int
+  receiverID   Int
+  status       FriendshipStatus @default(PENDING)
+  createdAt    DateTime         @default(now()) @db.Timestamptz
+  updatedAt    DateTime         @updatedAt @db.Timestamptz
+
+  requester User @relation("FriendshipRequester", fields: [requesterID], references: [userID], onDelete: Cascade)
+  receiver  User @relation("FriendshipReceiver", fields: [receiverID], references: [userID], onDelete: Cascade)
+
+  @@unique([requesterID, receiverID])
+}
+
+model Recipe {
+  recipeID         Int      @id @default(autoincrement())
+  name             String
+  dateCreation     DateTime @default(now()) @db.Timestamptz
+  price            Float?
+  nutritionalScore Float?
+  prepTime         Int?
+  cookTime         Int?
+  photo            String?
+  portion          Int?
+  description      String?
+  creatorID        Int
+  createdAt        DateTime @default(now()) @db.Timestamptz
+  updatedAt        DateTime @updatedAt @db.Timestamptz
+
+  creator User @relation(fields: [creatorID], references: [userID], onDelete: Cascade)
+
+  steps       Step[]
+  reviews     Review[]
+  ingredients RecipeIngredient[]
+  tags        RecipeTag[]
+  groups      GroupRecipe[]
+}
+
+model Review {
+  reviewID  Int      @id @default(autoincrement())
+  rating    Int
+  comment   String?
+  userID    Int
+  recipeID  Int
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  user   User   @relation(fields: [userID], references: [userID], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeID], references: [recipeID], onDelete: Cascade)
+
+  @@unique([userID, recipeID])
+}
+
+model Step {
+  stepID   Int    @id @default(autoincrement())
+  text     String
+  order    Int
+  recipeID Int
+
+  recipe Recipe @relation(fields: [recipeID], references: [recipeID], onDelete: Cascade)
+
+  @@unique([recipeID, order])
+}
+
+model Ingredient {
+  ingredientID     Int      @id @default(autoincrement())
+  name             String   @unique
+  price            Float?
+  nutritionalScore String?
+  category         String
+  unitDefault      String
+  calories         Int
+  createdAt        DateTime @default(now()) @db.Timestamptz
+  updatedAt        DateTime? @updatedAt @db.Timestamptz
+
+  recipes       RecipeIngredient[]
+  shoppingItems ShoppingItem[]
+  units         IngredientUnit[]
+}
+
+model Unit {
+  unitID Int    @id @default(autoincrement())
+  type   String @unique
+
+  ingredients       IngredientUnit[]
+  recipeIngredients RecipeIngredient[]
+  shoppingItems     ShoppingItem[]
+}
+
+model IngredientUnit {
+  ingredientID Int
+  unitID       Int
+
+  ingredient Ingredient @relation(fields: [ingredientID], references: [ingredientID], onDelete: Cascade)
+  unit       Unit       @relation(fields: [unitID], references: [unitID], onDelete: Cascade)
+
+  @@id([ingredientID, unitID])
+}
+
+model RecipeIngredient {
+  recipeID     Int
+  ingredientID Int
+  quantity     Float?
+  unitID       Int?
+
+  recipe     Recipe     @relation(fields: [recipeID], references: [recipeID], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientID], references: [ingredientID], onDelete: Restrict)
+  unit       Unit?      @relation(fields: [unitID], references: [unitID], onDelete: SetNull)
+
+  @@id([recipeID, ingredientID])
+}
+
+model Tag {
+  tagID Int    @id @default(autoincrement())
+  name  String @unique
+
+  recipes RecipeTag[]
+}
+
+model RecipeTag {
+  recipeID Int
+  tagID    Int
+
+  recipe Recipe @relation(fields: [recipeID], references: [recipeID], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagID], references: [tagID], onDelete: Cascade)
+
+  @@id([recipeID, tagID])
+}
+
+model Group {
+  groupID   Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  members      GroupMember[]
+  recipes      GroupRecipe[]
+  shoppingList ShoppingList?
+}
+
+model GroupMember {
+  groupID Int
+  userID  Int
+
+  group Group @relation(fields: [groupID], references: [groupID], onDelete: Cascade)
+  user  User  @relation(fields: [userID], references: [userID], onDelete: Cascade)
+
+  @@id([groupID, userID])
+}
+
+model GroupRecipe {
+  groupID  Int
+  recipeID Int
+  addedAt  DateTime @default(now()) @db.Timestamptz
+
+  group  Group  @relation(fields: [groupID], references: [groupID], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeID], references: [recipeID], onDelete: Cascade)
+
+  @@id([groupID, recipeID])
+}
+
+model ShoppingList {
+  listID    Int      @id @default(autoincrement())
+  name      String
+  userID    Int?     @unique
+  groupID   Int?     @unique
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  user  User?  @relation(fields: [userID], references: [userID], onDelete: Cascade)
+  group Group? @relation(fields: [groupID], references: [groupID], onDelete: Cascade)
+
+  items ShoppingItem[]
+}
+
+model ShoppingItem {
+  itemID       Int      @id @default(autoincrement())
+  name         String
+  quantity     Float?
+  checked      Boolean  @default(false)
+  listID       Int
+  ingredientID Int?
+  unitID       Int?
+  createdAt    DateTime @default(now()) @db.Timestamptz
+  updatedAt    DateTime @updatedAt @db.Timestamptz
+
+  shoppingList ShoppingList @relation(fields: [listID], references: [listID], onDelete: Cascade)
+  ingredient   Ingredient?  @relation(fields: [ingredientID], references: [ingredientID], onDelete: SetNull)
+  unit         Unit?        @relation(fields: [unitID], references: [unitID], onDelete: SetNull)
+}
