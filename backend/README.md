@@ -4,7 +4,7 @@ API REST développée avec **NestJS** et **TypeScript**, connectée à **Supabas
 
 ## Prérequis
 
-- [Node.js](https://nodejs.org/) (v18 ou supérieur)
+- [Node.js](https://nodejs.org/) (v20.20 ou supérieur)
 - npm
 - Un projet Supabase créé sur [supabase.com](https://supabase.com)
 

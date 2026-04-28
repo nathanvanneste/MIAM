@@ -4,7 +4,7 @@ Application mobile développée avec **Expo**, **React Native** et **TypeScript*
 
 ## Prérequis
 
-- [Node.js](https://nodejs.org/) (v18 ou supérieur)
+- [Node.js](https://nodejs.org/) (v20.20 ou supérieur)
 - npm
 - [Expo Go](https://expo.dev/client) installé sur votre téléphone (iOS ou Android)
 - Backend lancé en local (voir le README du backend)

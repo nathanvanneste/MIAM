@@ -18,7 +18,7 @@ Students: **William Barran - Arnaud Malle - Ashwine Trivaroul - Élodie Duverger
 
 ### Prérequis
 
-- [Node.js](https://nodejs.org/) v18 ou supérieur
+- [Node.js](https://nodejs.org/) v20.20 ou supérieur
 - npm
 - [Expo Go](https://expo.dev/client) sur votre téléphone (iOS ou Android)
 - Demander les fichiers `.env` à un membre de l'équipe (frontend + backend)
