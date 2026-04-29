@@ -6,9 +6,5 @@ export type Ingredient = {
     category: string;
     calories: number;
     unitDefault: string;
-    createdAt: Date;
-    price?: Float;
-    nutritionalScore?: string;
-    updatedAt?: Date;
 
 };
