@@ -1,8 +1,8 @@
-import WelcomeScreen from "@/src/screens/WelcomeScreen";
+import RecipeScreen from "@/src/screens/RecipeScreen";
 import { Text, View } from "react-native";
 
 export default function Index() {
   return (
-    <WelcomeScreen />
+    <RecipeScreen />
   );
 }

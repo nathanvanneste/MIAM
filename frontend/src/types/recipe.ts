@@ -1,4 +1,4 @@
-import { Float } from "react-native/Libraries/Types/CodegenTypes";
+import { RecipeIngredient } from "./recipeIngredient";
 
 export type Recipe = {
     recipeID: number;
@@ -9,6 +9,6 @@ export type Recipe = {
     photo?: string;
     portion: number;
     description: string;
-    recipeIngredients: recipeIngredients[];
+    recipeIngredients: RecipeIngredient[];
 
 };
