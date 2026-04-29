@@ -14,7 +14,7 @@ enum FriendshipStatus {
 }
 
 model User {
-  userID    Int      @id @default(autoincrement())
+  userID    String   @id @db.Uuid
   firstName String
   lastName  String
   email     String   @unique
@@ -34,8 +34,8 @@ model User {
 
 model Friendship {
   friendshipID Int              @id @default(autoincrement())
-  requesterID  Int
-  receiverID   Int
+  requesterID  String           @db.Uuid
+  receiverID   String           @db.Uuid
   status       FriendshipStatus @default(PENDING)
   createdAt    DateTime         @default(now()) @db.Timestamptz
 
@@ -55,7 +55,7 @@ model Recipe {
   photo            String?
   portion          Int
   description      String
-  creatorID        Int
+  creatorID        String   @db.Uuid
   createdAt        DateTime @default(now()) @db.Timestamptz
 
   creator User @relation(fields: [creatorID], references: [userID], onDelete: Cascade)
@@ -71,7 +71,7 @@ model Review {
   reviewID  Int      @id @default(autoincrement())
   rating    Int
   comment   String?
-  userID    Int
+  userID    String   @db.Uuid
   recipeID  Int
   createdAt DateTime @default(now()) @db.Timestamptz
 
@@ -101,7 +101,7 @@ model Ingredient {
   unitDefault      String
   calories         Int
   createdAt        DateTime @default(now()) @db.Timestamptz
-  
+
   recipes       RecipeIngredient[]
   shoppingItems ShoppingItem[]
 }
@@ -114,7 +114,6 @@ model Unit {
   shoppingItems     ShoppingItem[]
 }
 
-
 model RecipeIngredient {
   recipeID     Int
   ingredientID Int
@@ -123,7 +122,7 @@ model RecipeIngredient {
 
   recipe     Recipe     @relation(fields: [recipeID], references: [recipeID], onDelete: Cascade)
   ingredient Ingredient @relation(fields: [ingredientID], references: [ingredientID], onDelete: Restrict)
-  unit       Unit      @relation(fields: [unitID], references: [unitID], onDelete: Restrict)
+  unit       Unit       @relation(fields: [unitID], references: [unitID], onDelete: Restrict)
 
   @@id([recipeID, ingredientID])
 }
@@ -157,10 +156,10 @@ model Groups {
 
 model GroupMember {
   groupID Int
-  userID  Int
+  userID  String @db.Uuid
 
   group Groups @relation(fields: [groupID], references: [groupID], onDelete: Cascade)
-  user  User  @relation(fields: [userID], references: [userID], onDelete: Cascade)
+  user  User   @relation(fields: [userID], references: [userID], onDelete: Cascade)
 
   @@id([groupID, userID])
 }
@@ -169,29 +168,29 @@ model GroupRecipe {
   groupID  Int
   recipeID Int
 
-  group  Groups  @relation(fields: [groupID], references: [groupID], onDelete: Cascade)
+  group  Groups @relation(fields: [groupID], references: [groupID], onDelete: Cascade)
   recipe Recipe @relation(fields: [recipeID], references: [recipeID], onDelete: Cascade)
 
   @@id([groupID, recipeID])
 }
 
 model ShoppingList {
-  listID    Int      @id @default(autoincrement())
-  name      String
-  userID    Int?     @unique
-  groupID   Int?     @unique
+  listID  Int     @id @default(autoincrement())
+  name    String
+  userID  String? @unique @db.Uuid
+  groupID Int?    @unique
 
-  user  User?  @relation(fields: [userID], references: [userID], onDelete: Cascade)
+  user  User?   @relation(fields: [userID], references: [userID], onDelete: Cascade)
   group Groups? @relation(fields: [groupID], references: [groupID], onDelete: Cascade)
 
   items ShoppingItem[]
 }
 
 model ShoppingItem {
-  itemID       Int      @id @default(autoincrement())
+  itemID       Int     @id @default(autoincrement())
   name         String
   quantity     Float?
-  checked      Boolean  @default(false)
+  checked      Boolean @default(false)
   listID       Int
   ingredientID Int?
   unitID       Int?
