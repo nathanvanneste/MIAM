@@ -7,7 +7,7 @@ export default function WelcomeScreen() {
     const [ingredient, setIngredient] = useState<Ingredient | null>(null);
 
     useEffect(() => {
-        getIngredientById(1)
+        getIngredientById(120)
             .then(setIngredient)
             .catch(console.error);
     }, []);
