@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { getIngredientById } from "../services/ingredients.service";
 import { View, Text } from "react-native";
 import { Ingredient } from "../types/ingredient";
+import { CircleUserRound } from 'lucide-react-native'
 
 export default function WelcomeScreen() {
-    const [ingredient, setIngredient] = useState<Ingredient | null>(null);
+    /*const [ingredient, setIngredient] = useState<Ingredient | null>(null);
 
     useEffect(() => {
         getIngredientById(20)
@@ -14,11 +15,11 @@ export default function WelcomeScreen() {
 
     if (!ingredient) {
         return <Text>Chargement...</Text>;
-    }
+    }*/
 
     return (
         <View>
-            <Text>TEST DE L'APPEL DE LA BD DE MERDE D ARNAUD : {ingredient.name}</Text>
+            <CircleUserRound size={100} color="#13da5fb6" />
             <Text>[Logo de l'app]</Text>
             <Text>Bienvenue !</Text>
             <Text>Connecte-toi pour continuer</Text>
