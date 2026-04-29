@@ -3,20 +3,21 @@ export type User = {
     email: string;
     firstName: string;
     lastName: string;
-    avatarUrl?: string;
+    avatarUri?: string;
     pseudo: string;
     createdAt: string;
 };
 
 export type LoginDTO = {
-    email: string;
+    emailOrPseudo: string;
     password: string;
 }
 
 export type RegisterDTO = {
     email: string;
-    password: string;
+    password: string; // Il faut ?
     firstName: string;
     lastName: string;
     pseudo: string;
+    avatarUri?: string;
 }

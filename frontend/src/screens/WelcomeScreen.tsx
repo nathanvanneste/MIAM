@@ -2,15 +2,20 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingVi
 import { Eye, EyeOff } from 'lucide-react-native';
 import { router } from "expo-router";
 import { useState } from 'react'
-import { Image } from 'react-native'
+import { Image, Alert } from 'react-native'
 import { Colors, FontSize, Spacing, BorderRadius, FontWeight, ComponentSize } from '@/src/constants'
 import logo from '@/src/assets/images/logo.png'
 import { SafeAreaView } from "react-native-safe-area-context";
+import PasswordInput from '@/src/components/ui/PasswordInput'
+import { LoginDTO } from "../types/user";
 
 
 
 export default function WelcomeScreen() {
-    const [showPassword, setShowPassword] = useState(false)
+    const [form, setForm] = useState<LoginDTO>({
+        emailOrPseudo: '',
+        password: '',
+    })
 
     return (
         <SafeAreaView style={styles.container}>
@@ -37,22 +42,10 @@ export default function WelcomeScreen() {
                             placeholderTextColor="#999"
                             autoCapitalize="none"
                             keyboardType="email-address"
+                            onChangeText={(text) => setForm({ ...form, emailOrPseudo: text })}
                         />
-                        <View style={styles.passwordContainer}>
-                            <TextInput
-                                style={styles.passwordInput}
-                                placeholder="Mot de passe"
-                                placeholderTextColor="#999"
-                                secureTextEntry={!showPassword}
-                            />
-                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                                {showPassword
-                                    ? <EyeOff size={20} color="#999" />
-                                    : <Eye size={20} color="#999" />
-                                }
-                            </TouchableOpacity>
-                        </View>
-                        <TouchableOpacity>
+                        <PasswordInput onChangeText={(text) => setForm({ ...form, password: text })} />
+                        <TouchableOpacity onPress={() => Alert.alert('Trou de balle')}>
                             <Text style={styles.forgotPassword}>Mot de passe oublié ?</Text>
                         </TouchableOpacity>
 
