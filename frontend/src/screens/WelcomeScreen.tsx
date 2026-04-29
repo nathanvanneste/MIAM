@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Image } from 'react-native'
 import { Colors, FontSize, Spacing, BorderRadius, FontWeight, ComponentSize } from '@/src/constants'
 import logo from '@/src/assets/images/logo.png'
+import { SafeAreaView } from "react-native-safe-area-context";
 
 
 
@@ -12,66 +13,68 @@ export default function WelcomeScreen() {
     const [showPassword, setShowPassword] = useState(false)
 
     return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-            <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <SafeAreaView style={styles.container}>
+            <KeyboardAvoidingView
+                style={styles.container}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+                <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
-                {/* Logo */}
-                <View style={styles.logoContainer}>
-                    <Image source={logo} style={{ width: 200, height: 200, resizeMode: 'contain' }} />
-                </View>
+                    {/* Logo */}
+                    <View style={styles.logoContainer}>
+                        <Image source={logo} style={{ width: 200, height: 200, resizeMode: 'contain' }} />
+                    </View>
 
-                {/* Titre */}
-                <Text style={styles.welcome}>Bienvenue !</Text>
-                <Text style={styles.subtitle}>Connecte-toi pour continuer</Text>
+                    {/* Titre */}
+                    <Text style={styles.welcome}>Bienvenue !</Text>
+                    <Text style={styles.subtitle}>Connecte-toi pour continuer</Text>
 
-                {/* Formulaire */}
-                <View style={styles.form}>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Email ou pseudo"
-                        placeholderTextColor="#999"
-                        autoCapitalize="none"
-                        keyboardType="email-address"
-                    />
-                    <View style={styles.passwordContainer}>
+                    {/* Formulaire */}
+                    <View style={styles.form}>
                         <TextInput
-                            style={styles.passwordInput}
-                            placeholder="Mot de passe"
+                            style={styles.input}
+                            placeholder="Email ou pseudo"
                             placeholderTextColor="#999"
-                            secureTextEntry={!showPassword}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
                         />
-                        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                            {showPassword
-                                ? <EyeOff size={20} color="#999" />
-                                : <Eye size={20} color="#999" />
-                            }
+                        <View style={styles.passwordContainer}>
+                            <TextInput
+                                style={styles.passwordInput}
+                                placeholder="Mot de passe"
+                                placeholderTextColor="#999"
+                                secureTextEntry={!showPassword}
+                            />
+                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                                {showPassword
+                                    ? <EyeOff size={20} color="#999" />
+                                    : <Eye size={20} color="#999" />
+                                }
+                            </TouchableOpacity>
+                        </View>
+                        <TouchableOpacity>
+                            <Text style={styles.forgotPassword}>Mot de passe oublié ?</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.loginButton}
+                            onPress={() => router.replace('/(tabs)/feed')}
+                        >
+                            <Text style={styles.loginButtonText}>Se connecter</Text>
                         </TouchableOpacity>
                     </View>
-                    <TouchableOpacity>
-                        <Text style={styles.forgotPassword}>Mot de passe oublié ?</Text>
-                    </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={styles.loginButton}
-                        onPress={() => router.replace('/(tabs)/feed')}
-                    >
-                        <Text style={styles.loginButtonText}>Se connecter</Text>
-                    </TouchableOpacity>
-                </View>
+                    {/* Inscription */}
+                    <View style={styles.registerContainer}>
+                        <Text style={styles.registerText}>Pas encore de compte ?</Text>
+                        <TouchableOpacity onPress={() => router.push('/register')}>
+                            <Text style={styles.registerLink}>Créer un compte</Text>
+                        </TouchableOpacity>
+                    </View>
 
-                {/* Inscription */}
-                <View style={styles.registerContainer}>
-                    <Text style={styles.registerText}>Pas encore de compte ?</Text>
-                    <TouchableOpacity onPress={() => router.push('/register')}>
-                        <Text style={styles.registerLink}>Créer un compte</Text>
-                    </TouchableOpacity>
-                </View>
-
-            </ScrollView>
-        </KeyboardAvoidingView>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
 

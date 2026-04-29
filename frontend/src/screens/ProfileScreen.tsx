@@ -1,8 +1,7 @@
 // src/screens/ProfileScreen.tsx
 import { useState } from "react";
 import { View, Text, StyleSheet, Image, ScrollView } from "react-native";
-import SearchBar from "../components/ui/SearchBar";
-import { COLORS } from "../constants";
+import { Colors } from "../constants";
 
 export default function ProfileScreen() {
   const [search, setSearch] = useState("");
@@ -34,14 +33,7 @@ export default function ProfileScreen() {
 
         <Text style={styles.sectionTitle}>Mes recettes</Text>
 
-        <SearchBar
-          placeholder="Rechercher une recette..."
-          value={search}
-          onChangeText={setSearch}
-          showFilter
-          onFilterPress={() => console.log("Filtre pressé")}
-          filterButtonColor={COLORS.secondaryBackground}
-        />
+
 
         <View style={styles.grid}>
           {recipes.map((recipe) => (
@@ -195,7 +187,7 @@ function NavItem({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: Colors.background,
     paddingTop: 45,
   },
 
@@ -221,18 +213,18 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 28,
     fontWeight: "800",
-    color: COLORS.textPrimary,
+    color: Colors.textPrimary,
   },
 
   bio: {
     fontSize: 15,
-    color: COLORS.textSecondary,
+    color: Colors.textSecondary,
     marginTop: 6,
   },
 
   settings: {
     fontSize: 32,
-    color: COLORS.textPrimary,
+    color: Colors.textPrimary,
   },
 
   statsRow: {
@@ -245,7 +237,6 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     height: 100,
-    backgroundColor: COLORS.secondaryBackground,
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
@@ -259,19 +250,19 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 28,
     fontWeight: "800",
-    color: COLORS.textPrimary,
+    color: Colors.textPrimary,
   },
 
   statLabel: {
     fontSize: 14,
-    color: COLORS.textPrimary,
+    color: Colors.textPrimary,
   },
 
   badge: {
     position: "absolute",
     top: -10,
     right: -6,
-    backgroundColor: COLORS.error,
+    backgroundColor: Colors.error,
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -288,7 +279,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 28,
     fontWeight: "800",
-    color: COLORS.textPrimary,
+    color: Colors.textPrimary,
     paddingHorizontal: 24,
     marginBottom: 14,
   },
@@ -333,19 +324,19 @@ const styles = StyleSheet.create({
   recipeTitle: {
     fontSize: 20,
     fontWeight: "800",
-    color: COLORS.textPrimary,
+    color: Colors.textPrimary,
     marginBottom: 10,
   },
 
   recipeTime: {
     fontSize: 13,
-    color: COLORS.textPrimary,
+    color: Colors.textPrimary,
     marginBottom: 10,
   },
 
   tag: {
     alignSelf: "flex-start",
-    backgroundColor: COLORS.primary,
+    backgroundColor: Colors.primary,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
@@ -363,7 +354,6 @@ const styles = StyleSheet.create({
     left: 24,
     right: 24,
     height: 92,
-    backgroundColor: COLORS.card,
     borderRadius: 28,
     flexDirection: "row",
     justifyContent: "space-around",
@@ -376,16 +366,15 @@ const styles = StyleSheet.create({
 
   navIcon: {
     fontSize: 28,
-    color: COLORS.textPrimary,
+    color: Colors.textPrimary,
   },
 
   navLabel: {
     fontSize: 13,
     marginTop: 4,
-    color: COLORS.textPrimary,
+    color: Colors.textPrimary,
   },
 
   activeText: {
-    color: COLORS.primaryDark,
   },
 });
