@@ -13,16 +13,23 @@ import { UpdateFriendshipStatusDto } from './dto/update-friendship-status.dto';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private readonly include = {
-    recipes: true,
-    reviews: true,
-    shoppingList: true,
-    sentFriendships: true,
-    receivedFriendships: true,
-    groupMemberships: true,
-  };
+private readonly include = {
+  recipes: true,
+  savedRecipes: {
+    include: {
+      recipe: true,
+    },
+  },
+  reviews: true,
+  shoppingList: true,
+  sentFriendships: true,
+  receivedFriendships: true,
+  groupMemberships: true,
+};
 
   async create(dto: CreateUserDto) {
+    // Ajouter une vérification si on essaye de créer pseudo ou mail déjà use
+
     return this.prisma.user.create({
       data: dto,
     });
@@ -151,6 +158,96 @@ export class UsersService {
           requesterID,
           receiverID,
         },
+      },
+    });
+  }
+
+  async saveRecipe(userID: number, recipeID: number) {
+  await this.findOne(userID);
+
+  const recipe = await this.prisma.recipe.findUnique({
+    where: { recipeID },
+  });
+
+  if (!recipe) {
+    throw new NotFoundException(`Recipe with ID ${recipeID} not found`);
+  }
+
+  const existing = await this.prisma.savedRecipe.findUnique({
+    where: {
+      userID_recipeID: {
+        userID,
+        recipeID,
+      },
+    },
+  });
+
+  if (existing) {
+    throw new ConflictException('Recipe already saved by this user');
+  }
+
+  return this.prisma.savedRecipe.create({
+    data: {
+      userID,
+      recipeID,
+    },
+    include: {
+      recipe: true,
+    },
+  });
+}
+
+  async unsaveRecipe(userID: number, recipeID: number) {
+    const existing = await this.prisma.savedRecipe.findUnique({
+      where: {
+        userID_recipeID: {
+          userID,
+          recipeID,
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Saved recipe not found');
+    }
+
+    return this.prisma.savedRecipe.delete({
+      where: {
+        userID_recipeID: {
+          userID,
+          recipeID,
+        },
+      },
+    });
+  }
+
+  async findSavedRecipes(userID: number) {
+    await this.findOne(userID);
+
+    return this.prisma.savedRecipe.findMany({
+      where: { userID },
+      include: {
+        recipe: {
+          include: {
+            creator: true,
+            steps: true,
+            ingredients: {
+              include: {
+                ingredient: true,
+                unit: true,
+              },
+            },
+            tags: {
+              include: {
+                tag: true,
+              },
+            },
+            reviews: true,
+          },
+        },
+      },
+      orderBy: {
+        savedAt: 'desc',
       },
     });
   }

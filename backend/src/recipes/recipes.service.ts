@@ -19,6 +19,11 @@ export class RecipesService {
 
   private readonly recipeInclude = {
     creator: true,
+    savedBy: {
+      include: {
+        user: true,
+      },
+    },
     steps: {
       orderBy: {
         order: 'asc' as const,

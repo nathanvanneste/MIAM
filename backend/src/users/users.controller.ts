@@ -14,6 +14,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CreateFriendshipDto } from './dto/create-friendship.dto';
 import { UpdateFriendshipStatusDto } from './dto/update-friendship-status.dto';
+import { SaveRecipeDto } from './dto/save-recipe.dto';
 
 @Controller('users')
 export class UsersController {
@@ -75,5 +76,26 @@ export class UsersController {
       requesterID,
       receiverID,
     );
+  }
+
+  @Post(':userID/saved-recipes')
+  saveRecipe(
+    @Param('userID', ParseIntPipe) userID: number,
+    @Body() dto: SaveRecipeDto,
+  ) {
+    return this.usersService.saveRecipe(userID, dto.recipeID);
+  }
+
+  @Get(':userID/saved-recipes')
+  findSavedRecipes(@Param('userID', ParseIntPipe) userID: number) {
+    return this.usersService.findSavedRecipes(userID);
+  }
+
+  @Delete(':userID/saved-recipes/:recipeID')
+  unsaveRecipe(
+    @Param('userID', ParseIntPipe) userID: number,
+    @Param('recipeID', ParseIntPipe) recipeID: number,
+  ) {
+    return this.usersService.unsaveRecipe(userID, recipeID);
   }
 }

@@ -1,6 +1,6 @@
 import { IsInt } from 'class-validator';
 
-export class AddGroupRecipeDto {
+export class SaveRecipeDto {
   @IsInt()
   recipeID!: number;
 }
