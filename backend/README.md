@@ -31,7 +31,19 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
 
 ```bash
 $ npm install
+
+$ npx prisma install 
+
+$ npx prisma generate 
+
 ```
+
+## If you want to push de the db scheme 
+```bash
+$ npx prisma db push
+
+```
+
 
 ## Compile and run the project
 
