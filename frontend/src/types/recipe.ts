@@ -4,12 +4,11 @@ export type Recipe = {
     recipeID: number;
     name: string;
     dateCreation: Date;
-    price?: Float;
-    nutScore: string;
     prepTime: number;
     cookTime: number;
     photo?: string;
     portion: number;
-    description?: string;
+    description: string;
+    recipeIngredients: recipeIngredients[];
 
 };
