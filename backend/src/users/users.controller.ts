@@ -1,34 +1,79 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { CreateFriendshipDto } from './dto/create-friendship.dto';
+import { UpdateFriendshipStatusDto } from './dto/update-friendship-status.dto';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  create(@Body() dto: CreateUserDto) {
+    return this.usersService.create(dto);
   }
 
   @Get()
-  findAll() {
+  findAll(@Query('search') search?: string) {
+    if (search) return this.usersService.search(search);
     return this.usersService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(+id);
+  @Get(':userID')
+  findOne(@Param('userID', ParseIntPipe) userID: number) {
+    return this.usersService.findOne(userID);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(+id, updateUserDto);
+  @Patch(':userID')
+  update(
+    @Param('userID', ParseIntPipe) userID: number,
+    @Body() dto: UpdateUserDto,
+  ) {
+    return this.usersService.update(userID, dto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(+id);
+  @Delete(':userID')
+  remove(@Param('userID', ParseIntPipe) userID: number) {
+    return this.usersService.remove(userID);
+  }
+
+  @Post('friendships')
+  sendFriendRequest(@Body() dto: CreateFriendshipDto) {
+    return this.usersService.sendFriendRequest(dto);
+  }
+
+  @Patch('friendships/:requesterID/:receiverID')
+  updateFriendship(
+    @Param('requesterID', ParseIntPipe) requesterID: number,
+    @Param('receiverID', ParseIntPipe) receiverID: number,
+    @Body() dto: UpdateFriendshipStatusDto,
+  ) {
+    return this.usersService.updateFriendship(
+      requesterID,
+      receiverID,
+      dto,
+    );
+  }
+
+  @Delete('friendships/:requesterID/:receiverID')
+  removeFriendship(
+    @Param('requesterID', ParseIntPipe) requesterID: number,
+    @Param('receiverID', ParseIntPipe) receiverID: number,
+  ) {
+    return this.usersService.removeFriendship(
+      requesterID,
+      receiverID,
+    );
   }
 }

@@ -1,62 +1,382 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { UpdateRecipeDto } from './dto/update-recipe.dto';
-import { PrismaService } from '../prisma/prisma.service';
+import { CreateReviewDto } from './dto/create-review.dto';
+import { UpdateReviewDto } from './dto/update-review.dto';
+import { CreateStepDto } from './dto/create-step.dto';
+import { UpdateStepDto } from './dto/update-step.dto';
+import { AddRecipeIngredientDto } from './dto/add-recipe-ingredient.dto';
+import { AddRecipeTagDto } from './dto/add-recipe-tag.dto';
 
 @Injectable()
 export class RecipesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateRecipeDto) {
+  private readonly recipeInclude = {
+    creator: true,
+    steps: {
+      orderBy: {
+        order: 'asc' as const,
+      },
+    },
+    ingredients: {
+      include: {
+        ingredient: true,
+        unit: true,
+      },
+    },
+    tags: {
+      include: {
+        tag: true,
+      },
+    },
+    reviews: {
+      include: {
+        user: true,
+      },
+    },
+    groups: true,
+  };
+
+  async create(createRecipeDto: CreateRecipeDto) {
+    const { creatorID, steps, ingredients, tagIDs, ...recipeData } =
+      createRecipeDto;
+
     return this.prisma.recipe.create({
       data: {
-        name: dto.name,
-        description: dto.description,
-        price: dto.price,
-        nutritionalScore: dto.nutritionalScore,
-        prepTime: dto.prepTime,
-        cookTime: dto.cookTime,
-        photo: dto.photo,
-        portion: dto.portion,
+        ...recipeData,
 
         creator: {
-          connect: {
-            userID: dto.creatorID,
-          },
+          connect: { userID: creatorID },
         },
+
+        steps: steps
+          ? {
+              create: steps.map((step) => ({
+                text: step.text,
+                order: step.order,
+              })),
+            }
+          : undefined,
+
+        ingredients: ingredients
+          ? {
+              create: ingredients.map((recipeIngredient) => ({
+                quantity: recipeIngredient.quantity,
+                ingredient: {
+                  connect: { ingredientID: recipeIngredient.ingredientID },
+                },
+                unit: {
+                  connect: { unitID: recipeIngredient.unitID },
+                },
+              })),
+            }
+          : undefined,
+
+        tags: tagIDs
+          ? {
+              create: tagIDs.map((tagID) => ({
+                tag: {
+                  connect: { tagID },
+                },
+              })),
+            }
+          : undefined,
       },
+      include: this.recipeInclude,
     });
   }
 
   async findAll() {
     return this.prisma.recipe.findMany({
-      include: {
-        creator: true,
-        steps: true,
-        ingredients: {
-          include: {
-            ingredient: true,
-            unit: true,
-          },
+      include: this.recipeInclude,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  async findOne(recipeID: number) {
+    const recipe = await this.prisma.recipe.findUnique({
+      where: { recipeID },
+      include: this.recipeInclude,
+    });
+
+    if (!recipe) {
+      throw new NotFoundException(`Recipe with ID ${recipeID} not found`);
+    }
+
+    return recipe;
+  }
+
+  async update(recipeID: number, updateRecipeDto: UpdateRecipeDto) {
+    await this.findOne(recipeID);
+
+    const { creatorID, steps, ingredients, tagIDs, ...recipeData } =
+      updateRecipeDto;
+
+    return this.prisma.recipe.update({
+      where: { recipeID },
+      data: {
+        ...recipeData,
+
+        creator: creatorID
+          ? {
+              connect: { userID: creatorID },
+            }
+          : undefined,
+
+        steps: steps
+          ? {
+              deleteMany: {},
+              create: steps.map((step) => ({
+                text: step.text,
+                order: step.order,
+              })),
+            }
+          : undefined,
+
+        ingredients: ingredients
+          ? {
+              deleteMany: {},
+              create: ingredients.map((recipeIngredient) => ({
+                quantity: recipeIngredient.quantity,
+                ingredient: {
+                  connect: { ingredientID: recipeIngredient.ingredientID },
+                },
+                unit: {
+                  connect: { unitID: recipeIngredient.unitID },
+                },
+              })),
+            }
+          : undefined,
+
+        tags: tagIDs
+          ? {
+              deleteMany: {},
+              create: tagIDs.map((tagID) => ({
+                tag: {
+                  connect: { tagID },
+                },
+              })),
+            }
+          : undefined,
+      },
+      include: this.recipeInclude,
+    });
+  }
+
+  async remove(recipeID: number) {
+    await this.findOne(recipeID);
+
+    return this.prisma.recipe.delete({
+      where: { recipeID },
+    });
+  }
+
+  async addStep(recipeID: number, createStepDto: CreateStepDto) {
+    await this.findOne(recipeID);
+
+    return this.prisma.step.create({
+      data: {
+        text: createStepDto.text,
+        order: createStepDto.order,
+        recipeID,
+      },
+    });
+  }
+
+  async updateStep(stepID: number, updateStepDto: UpdateStepDto) {
+    const step = await this.prisma.step.findUnique({
+      where: { stepID },
+    });
+
+    if (!step) {
+      throw new NotFoundException(`Step with ID ${stepID} not found`);
+    }
+
+    return this.prisma.step.update({
+      where: { stepID },
+      data: updateStepDto,
+    });
+  }
+
+  async removeStep(stepID: number) {
+    const step = await this.prisma.step.findUnique({
+      where: { stepID },
+    });
+
+    if (!step) {
+      throw new NotFoundException(`Step with ID ${stepID} not found`);
+    }
+
+    return this.prisma.step.delete({
+      where: { stepID },
+    });
+  }
+
+  async addIngredient(
+    recipeID: number,
+    addRecipeIngredientDto: AddRecipeIngredientDto,
+  ) {
+    await this.findOne(recipeID);
+
+    const existingIngredient = await this.prisma.recipeIngredient.findUnique({
+      where: {
+        recipeID_ingredientID: {
+          recipeID,
+          ingredientID: addRecipeIngredientDto.ingredientID,
         },
-        tags: {
-          include: {
-            tag: true,
-          },
+      },
+    });
+
+    if (existingIngredient) {
+      throw new ConflictException('Ingredient is already in this recipe');
+    }
+
+    return this.prisma.recipeIngredient.create({
+      data: {
+        recipeID,
+        ingredientID: addRecipeIngredientDto.ingredientID,
+        quantity: addRecipeIngredientDto.quantity,
+        unitID: addRecipeIngredientDto.unitID,
+      },
+      include: {
+        ingredient: true,
+        unit: true,
+      },
+    });
+  }
+
+  async removeIngredient(recipeID: number, ingredientID: number) {
+    const existingIngredient = await this.prisma.recipeIngredient.findUnique({
+      where: {
+        recipeID_ingredientID: {
+          recipeID,
+          ingredientID,
+        },
+      },
+    });
+
+    if (!existingIngredient) {
+      throw new NotFoundException('Ingredient is not in this recipe');
+    }
+
+    return this.prisma.recipeIngredient.delete({
+      where: {
+        recipeID_ingredientID: {
+          recipeID,
+          ingredientID,
         },
       },
     });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} recipe`;
+  async addTag(recipeID: number, addRecipeTagDto: AddRecipeTagDto) {
+    await this.findOne(recipeID);
+
+    const existingTag = await this.prisma.recipeTag.findUnique({
+      where: {
+        recipeID_tagID: {
+          recipeID,
+          tagID: addRecipeTagDto.tagID,
+        },
+      },
+    });
+
+    if (existingTag) {
+      throw new ConflictException('Tag is already linked to this recipe');
+    }
+
+    return this.prisma.recipeTag.create({
+      data: {
+        recipeID,
+        tagID: addRecipeTagDto.tagID,
+      },
+      include: {
+        tag: true,
+      },
+    });
   }
 
-  update(id: number, updateRecipeDto: UpdateRecipeDto) {
-    return `This action updates a #${id} recipe`;
+  async removeTag(recipeID: number, tagID: number) {
+    const existingTag = await this.prisma.recipeTag.findUnique({
+      where: {
+        recipeID_tagID: {
+          recipeID,
+          tagID,
+        },
+      },
+    });
+
+    if (!existingTag) {
+      throw new NotFoundException('Tag is not linked to this recipe');
+    }
+
+    return this.prisma.recipeTag.delete({
+      where: {
+        recipeID_tagID: {
+          recipeID,
+          tagID,
+        },
+      },
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} recipe`;
+  async addReview(createReviewDto: CreateReviewDto) {
+    const existingReview = await this.prisma.review.findUnique({
+      where: {
+        userID_recipeID: {
+          userID: createReviewDto.userID,
+          recipeID: createReviewDto.recipeID,
+        },
+      },
+    });
+
+    if (existingReview) {
+      throw new ConflictException('User has already reviewed this recipe');
+    }
+
+    return this.prisma.review.create({
+      data: createReviewDto,
+      include: {
+        user: true,
+        recipe: true,
+      },
+    });
+  }
+
+  async updateReview(reviewID: number, updateReviewDto: UpdateReviewDto) {
+    const review = await this.prisma.review.findUnique({
+      where: { reviewID },
+    });
+
+    if (!review) {
+      throw new NotFoundException(`Review with ID ${reviewID} not found`);
+    }
+
+    return this.prisma.review.update({
+      where: { reviewID },
+      data: updateReviewDto,
+    });
+  }
+
+  async removeReview(reviewID: number) {
+    const review = await this.prisma.review.findUnique({
+      where: { reviewID },
+    });
+
+    if (!review) {
+      throw new NotFoundException(`Review with ID ${reviewID} not found`);
+    }
+
+    return this.prisma.review.delete({
+      where: { reviewID },
+    });
   }
 }
