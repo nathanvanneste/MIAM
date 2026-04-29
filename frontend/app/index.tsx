@@ -1,10 +1,9 @@
-import WelcomeScreen from "@/src/screens/WelcomeScreen";
-
-import { Text, View } from "react-native";
-import ProfileScreen from "../src/screens/ProfileScreen";
+import { Redirect } from 'expo-router'
+//import { useAuth } from '@/src/hooks/useAuth'  // à créer plus tard
 
 export default function Index() {
-  return (
-    <WelcomeScreen />
-  );
+  //const { user } = useAuth()
+
+  //if (user) return <Redirect href="/(tabs)/feed" />
+  return <Redirect href="/welcome" />
 }

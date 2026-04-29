@@ -1,8 +1,9 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
-import { Eye, EyeOff, CircleUserRound } from 'lucide-react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { router } from "expo-router";
 import { useState } from 'react'
 import { Image } from 'react-native'
+import { Colors, FontSize, Spacing, BorderRadius, FontWeight, ComponentSize } from '@/src/constants'
 import logo from '@/src/assets/images/logo.png'
 
 
@@ -64,7 +65,7 @@ export default function WelcomeScreen() {
                 {/* Inscription */}
                 <View style={styles.registerContainer}>
                     <Text style={styles.registerText}>Pas encore de compte ?</Text>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => router.push('/register')}>
                         <Text style={styles.registerLink}>Créer un compte</Text>
                     </TouchableOpacity>
                 </View>
@@ -77,98 +78,98 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FAFAF7',
+        backgroundColor: Colors.background
     },
     scroll: {
         flexGrow: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 32,
-        paddingVertical: 48,
+        paddingHorizontal: Spacing.xl,
+        paddingVertical: Spacing.xxxxl
     },
     logoContainer: {
         alignItems: 'center',
-        marginBottom: 32,
+        marginBottom: Spacing.xl,
     },
     appName: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: '#2D2D2D',
+        fontSize: FontSize.xxxl,
+        fontWeight: FontWeight.bold,
+        color: Colors.textPrimary,
         letterSpacing: 4,
-        marginTop: 8,
+        marginTop: Spacing.sm,
     },
     welcome: {
-        fontSize: 26,
-        fontWeight: '600',
-        color: '#3D0B0C',
-        marginBottom: 8,
+        fontSize: FontSize.xxl,
+        fontWeight: FontWeight.semibold,
+        color: Colors.primary,
+        marginBottom: Spacing.sm,
     },
     subtitle: {
-        fontSize: 15,
-        color: '#888',
-        marginBottom: 36,
+        fontSize: FontSize.md,
+        color: Colors.textSecondary,
+        marginBottom: Spacing.xxl,
     },
     form: {
         width: '100%',
-        gap: 16,
+        gap: Spacing.md,
     },
     input: {
         width: '100%',
-        height: 52,
-        backgroundColor: '#fff',
-        borderRadius: 12,
+        height: ComponentSize.inputHeight,
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.md,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
-        paddingHorizontal: 16,
-        fontSize: 15,
-        color: '#2D2D2D',
+        borderColor: Colors.border,
+        paddingHorizontal: Spacing.md,
+        fontSize: FontSize.md,
+        color: Colors.textPrimary,
     },
     passwordContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
-        borderRadius: 12,
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.md,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
-        paddingHorizontal: 16,
-        height: 52,
+        borderColor: Colors.border,
+        paddingHorizontal: Spacing.md,
+        height: ComponentSize.inputHeight,
     },
     passwordInput: {
         flex: 1,
-        fontSize: 15,
-        color: '#2D2D2D',
+        fontSize: FontSize.md,
+        color: Colors.textPrimary,
     },
     forgotPassword: {
-        fontSize: 13,
-        color: '#9D7F7C',
+        fontSize: FontSize.sm,
+        color: Colors.primaryMuted,
         textAlign: 'right',
     },
     loginButton: {
         width: '100%',
-        height: 52,
-        backgroundColor: '#3A0C0C',
-        borderRadius: 12,
+        height: ComponentSize.buttonHeight,
+        backgroundColor: Colors.primary,
+        borderRadius: BorderRadius.md,
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: 8,
     },
     loginButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
+        color: Colors.surface,
+        fontSize: FontSize.lg,
+        fontWeight: FontWeight.semibold,
     },
     registerContainer: {
         alignItems: 'center',
-        marginTop: 40,
+        marginTop: Spacing.xxxl,
         gap: 6,
     },
     registerText: {
-        fontSize: 14,
-        color: '#888',
+        fontSize: FontSize.base,
+        color: Colors.textSecondary,
     },
     registerLink: {
-        fontSize: 14,
-        color: '#AB4442',
-        fontWeight: '600',
+        fontSize: FontSize.base,
+        color: Colors.primaryLight,
+        fontWeight: FontWeight.semibold,
     },
 });
