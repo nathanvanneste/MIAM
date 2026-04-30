@@ -1,26 +1,294 @@
-import { Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+//import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { CreateFriendshipDto } from './dto/create-friendship.dto';
+import { UpdateFriendshipStatusDto } from './dto/update-friendship-status.dto';
+import { CreateMyProfileDto } from './dto/create-my-profile.dto';
+
+type AuthUser = {
+  userID: string;
+  email?: string;
+  role?: string;
+};
 
 @Injectable()
 export class UsersService {
-  create(createUserDto: CreateUserDto) {
-    return 'This action adds a new user';
+  constructor(private readonly prisma: PrismaService) {}
+
+private readonly include = {
+  recipes: true,
+  savedRecipes: {
+    include: {
+      recipe: true,
+    },
+  },
+  reviews: true,
+  shoppingList: true,
+  sentFriendships: true,
+  receivedFriendships: true,
+  groupMemberships: true,
+};
+
+  async createMyProfile(authUser: AuthUser, dto: CreateMyProfileDto) {
+  const existingUser = await this.prisma.user.findUnique({
+    where: {
+      userID: authUser.userID,
+    },
+  });
+
+  if (existingUser) {
+    return existingUser;
   }
 
-  findAll() {
-    return `This action returns all users`;
+  if (!authUser.email) {
+    throw new BadRequestException('Authenticated user email is missing');
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
+  return this.prisma.user.create({
+    data: {
+      userID: authUser.userID,
+      email: authUser.email,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      pseudo: dto.pseudo,
+      avatar: dto.avatar,
+    },
+  });
+}
+
+  async findAll() {
+    return this.prisma.user.findMany({
+      orderBy: { pseudo: 'asc' },
+    });
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+  async findOne(userID: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { userID },
+      include: this.include,
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userID} not found`);
+    }
+
+    return user;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  async search(search: string) {
+    return this.prisma.user.findMany({
+      where: {
+        OR: [
+          { pseudo: { contains: search, mode: 'insensitive' } },
+          { firstName: { contains: search, mode: 'insensitive' } },
+          { lastName: { contains: search, mode: 'insensitive' } },
+        ],
+      },
+      orderBy: { pseudo: 'asc' },
+    });
+  }
+
+  async update(userID: string, dto: UpdateUserDto) {
+    await this.findOne(userID);
+
+    return this.prisma.user.update({
+      where: { userID },
+      data: dto,
+    });
+  }
+
+  async remove(userID: string) {
+    await this.findOne(userID);
+
+    return this.prisma.user.delete({
+      where: { userID },
+    });
+  }
+
+  async sendFriendRequest(requesterID: string, dto: CreateFriendshipDto) {    
+    if (requesterID === dto.receiverID) {
+      throw new ConflictException('Cannot add yourself');
+    }
+
+    const receiver = await this.prisma.user.findUnique({
+      where: {
+        userID: dto.receiverID,
+      },
+    });
+
+    if (!receiver) {
+      throw new NotFoundException(`User with ID ${dto.receiverID} not found`);
+    }
+
+    const existing = await this.prisma.friendship.findUnique({
+      where: {
+        requesterID_receiverID: {
+          requesterID: requesterID,
+          receiverID: dto.receiverID,
+        },
+      },
+    });
+
+    if (existing) {
+      throw new ConflictException('Friendship already exists');
+    }
+
+    return this.prisma.friendship.create({
+      data: {
+        requesterID,
+        receiverID: dto.receiverID,
+      },
+    });
+  }
+
+  async updateFriendship(
+    requesterID: string,
+    receiverID: string,
+    dto: UpdateFriendshipStatusDto,
+  ) {
+    const friendship = await this.prisma.friendship.findUnique({
+      where: {
+        requesterID_receiverID: {
+          requesterID,
+          receiverID,
+        },
+      },
+    });
+
+    if (!friendship) {
+      throw new NotFoundException('Friendship not found');
+    }
+
+    return this.prisma.friendship.update({
+      where: {
+        requesterID_receiverID: {
+          requesterID,
+          receiverID,
+        },
+      },
+      data: {
+        status: dto.status,
+      },
+    });
+  }
+
+  async removeFriendship(requesterID: string, receiverID: string) {
+    const friendship = await this.prisma.friendship.findUnique({
+      where: {
+        requesterID_receiverID: {
+          requesterID,
+          receiverID,
+        },
+      },
+    });
+
+    if (!friendship) {
+      throw new NotFoundException('Friendship not found');
+    }
+
+    return this.prisma.friendship.delete({
+      where: {
+        requesterID_receiverID: {
+          requesterID,
+          receiverID,
+        },
+      },
+    });
+  }
+
+  async saveRecipe(userID: string, recipeID: number) {
+  await this.findOne(userID);
+
+  const recipe = await this.prisma.recipe.findUnique({
+    where: { recipeID },
+  });
+
+  if (!recipe) {
+    throw new NotFoundException(`Recipe with ID ${recipeID} not found`);
+  }
+
+  const existing = await this.prisma.savedRecipe.findUnique({
+    where: {
+      userID_recipeID: {
+        userID,
+        recipeID,
+      },
+    },
+  });
+
+  if (existing) {
+    throw new ConflictException('Recipe already saved by this user');
+  }
+
+  return this.prisma.savedRecipe.create({
+    data: {
+      userID,
+      recipeID,
+    },
+    include: {
+      recipe: true,
+    },
+  });
+}
+
+  async unsaveRecipe(userID: string, recipeID: number) {
+    const existing = await this.prisma.savedRecipe.findUnique({
+      where: {
+        userID_recipeID: {
+          userID,
+          recipeID,
+        },
+      },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Saved recipe not found');
+    }
+
+    return this.prisma.savedRecipe.delete({
+      where: {
+        userID_recipeID: {
+          userID,
+          recipeID,
+        },
+      },
+    });
+  }
+
+  async findSavedRecipes(userID: string) {
+    await this.findOne(userID);
+
+    return this.prisma.savedRecipe.findMany({
+      where: { userID },
+      include: {
+        recipe: {
+          include: {
+            creator: true,
+            steps: true,
+            ingredients: {
+              include: {
+                ingredient: true,
+                unit: true,
+              },
+            },
+            tags: {
+              include: {
+                tag: true,
+              },
+            },
+            reviews: true,
+          },
+        },
+      },
+      orderBy: {
+        savedAt: 'desc',
+      },
+    });
   }
 }

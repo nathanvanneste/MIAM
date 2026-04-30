@@ -6,6 +6,8 @@ import { ShoppingListsModule } from './shopping-lists/shopping-lists.module';
 import { GroupsModule } from './groups/groups.module';
 import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { TagsModule } from './tags/tags.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { PrismaModule } from './prisma/prisma.module';
     ShoppingListsModule,
     GroupsModule,
     UsersModule,
+    TagsModule,
+    AuthModule,
   ],
 })
 export class AppModule {}
