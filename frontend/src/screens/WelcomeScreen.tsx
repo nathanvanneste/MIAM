@@ -8,6 +8,8 @@ import logo from '@/src/assets/images/logo.png'
 import { SafeAreaView } from "react-native-safe-area-context";
 import PasswordInput from '@/src/components/ui/PasswordInput'
 import { LoginDTO } from "../types/user";
+import { signIn } from '@/src/services/auth.service';
+import { apiFetch } from '@/src/services/api.service';
 
 
 
@@ -16,6 +18,31 @@ export default function WelcomeScreen() {
         emailOrPseudo: '',
         password: '',
     })
+
+    const handleSignIn = async () => {
+        try {
+        if (!form.emailOrPseudo.trim() || !form.password.trim()) {
+            Alert.alert('Erreur', 'Veuillez remplir tous les champs.');
+            return;
+        }
+
+        await signIn(form.emailOrPseudo.trim(), form.password);
+
+        const me = await apiFetch('/users/me');
+        console.log('Utilisateur connecté :', me);
+
+        router.replace('/(tabs)/profile');
+        } catch (error) {
+        console.error('Erreur connexion :', error);
+
+        Alert.alert(
+            'Erreur de connexion',
+            error instanceof Error
+            ? error.message
+            : 'Impossible de se connecter.',
+        );
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -51,7 +78,7 @@ export default function WelcomeScreen() {
 
                         <TouchableOpacity
                             style={styles.loginButton}
-                            onPress={() => router.replace('/(tabs)/profile')}
+                            onPress={handleSignIn}
                         >
                             <Text style={styles.loginButtonText}>Se connecter</Text>
                         </TouchableOpacity>
