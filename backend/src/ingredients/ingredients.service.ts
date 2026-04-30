@@ -1,33 +1,43 @@
-import { Injectable } from '@nestjs/common';
-import { CreateIngredientDto } from './dto/create-ingredient.dto';
-import { UpdateIngredientDto } from './dto/update-ingredient.dto';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class IngredientsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(createIngredientDto: CreateIngredientDto) {
-    return 'This action adds a new ingredient';
-  }
-
-  findAll() {
-    return `This action returns all ingredients`;
-  }
-
-  findOne(id: number) {
-    return this.prisma.ingredient.findUnique({
-      where: {
-        ingredientID: id,
+  async findAll() {
+    return this.prisma.ingredient.findMany({
+      orderBy: {
+        name: 'asc',
       },
     });
   }
 
-  update(id: number, updateIngredientDto: UpdateIngredientDto) {
-    return `This action updates a #${id} ingredient`;
+  async findOne(ingredientID: number) {
+    const ingredient = await this.prisma.ingredient.findUnique({
+      where: { ingredientID },
+    });
+
+    if (!ingredient) {
+      throw new NotFoundException(
+        `Ingredient with ID ${ingredientID} not found`,
+      );
+    }
+
+    return ingredient;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} ingredient`;
+  async search(search: string) {
+    return this.prisma.ingredient.findMany({
+      where: {
+        name: {
+          contains: search,
+          mode: 'insensitive',
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
   }
 }
