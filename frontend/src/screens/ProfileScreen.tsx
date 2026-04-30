@@ -1,6 +1,6 @@
 // src/screens/ProfileScreen.tsx
 import { useState } from "react";
-import { View, Text, StyleSheet, Image, ScrollView, Pressable} from "react-native";
+import { View, Text, StyleSheet, Image, ScrollView, Pressable } from "react-native";
 import SearchBar from "../components/ui/SearchBar";
 import RecipeCard from "../components/ui/Recipe/RecipeCard";
 import { COLORS } from "../constants";
@@ -44,9 +44,9 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.statsRow}>
-          <StatCard icon={<ChefHat size={26} color={COLORS.textPrimary}/>} value="28" label="recettes" />
-          <StatCard icon={<UsersRound size={26} color={COLORS.textPrimary}/>} value="109" label="amis" />
-          <StatCard icon={<Mail size={26} color={COLORS.textPrimary}/>} value="" label="en attente" badge="3" />
+          <StatCard icon={<ChefHat size={26} color={COLORS.textPrimary} />} value="28" label="recettes" />
+          <StatCard icon={<UsersRound size={26} color={COLORS.textPrimary} />} value="109" label="amis" />
+          <StatCard icon={<Mail size={26} color={COLORS.textPrimary} />} value="" label="en attente" badge="3" />
         </View>
 
         <Text style={styles.sectionTitle}>Mes recettes</Text>
@@ -124,7 +124,7 @@ const recipes: RecipeWithStyle[] = [
     recipeIngredients: [],
     color: "#FDEAF2",
   },
-  
+
   {
     recipeID: 4,
     name: "Baguette",
@@ -271,24 +271,24 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondaryBackground,
     borderRadius: 20,
     alignItems: "center",
-    justifyContent: "flex-start", 
-    paddingTop: 1, 
+    justifyContent: "flex-start",
+    paddingTop: 1,
   },
 
   statIcon: {
-    marginTop: 5, 
+    marginTop: 5,
     marginBottom: 0,
   },
 
   statText: {
-    flexDirection: "row", 
+    flexDirection: "row",
   },
 
   statValue: {
     fontSize: 20,
     fontWeight: "700",
     color: COLORS.textPrimary,
-    marginTop: 0, 
+    marginTop: 0,
     marginBottom: 5,
   },
 

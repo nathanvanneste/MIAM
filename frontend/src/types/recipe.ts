@@ -9,6 +9,17 @@ export type Recipe = {
     photo?: string;
     portion: number;
     description: string;
-    recipeIngredients: RecipeIngredient[];
+    recipeIngredients: RecipeIngredient[]
 
 };
+
+export type CreateRecipeDTO = {
+    name: string
+    portions: number
+    prepTime: number
+    cookTime: number
+    recipeIngredients: RecipeIngredient[]
+    categories: string[]
+    description?: string
+    photoUri?: string
+}
