@@ -9,7 +9,8 @@ export const COLORS = {
   card: "#FFFFFF",              // cartes blanches
   secondaryBackground: "#FFE6CF", // boutons secondaires notif
 
-  textPrimary: "#3B0F0F",
+  textPrimary: "#3B0909",
+  textTertiary: "#7F5656",
   textSecondary: "#777777",
   textLight: "#B8B0A8",
 

@@ -9,6 +9,6 @@ export type Recipe = {
     photo?: string;
     portion: number;
     description: string;
-    ingredients: RecipeIngredient;
+    ingredients: RecipeIngredient[];
 
 };

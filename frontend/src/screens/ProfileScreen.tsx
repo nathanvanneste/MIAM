@@ -1,14 +1,30 @@
 // src/screens/ProfileScreen.tsx
 import { useState } from "react";
-import { View, Text, StyleSheet, Image, ScrollView } from "react-native";
+import { View, Text, StyleSheet, Image, ScrollView, Pressable} from "react-native";
 import SearchBar from "../components/ui/SearchBar";
+import RecipeCard from "../components/ui/RecipeCard";
 import { COLORS } from "../constants";
+import { Settings, ChefHat, UsersRound, Mail } from "lucide-react-native";
+import type { ReactNode } from "react";
+import type { Recipe } from "../types/recipe";
+
+type RecipeWithStyle = Recipe & {
+  color?: string;
+  icon?: string;
+};
 
 export default function ProfileScreen() {
   const [search, setSearch] = useState("");
 
   return (
     <View style={styles.container}>
+      <Pressable
+        style={styles.settings}
+        onPress={() => console.log("settings")}
+      >
+        <Settings size={26} color={COLORS.textPrimary} />
+      </Pressable>
+
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Image
@@ -20,16 +36,16 @@ export default function ProfileScreen() {
 
           <View style={styles.headerText}>
             <Text style={styles.username}>@paulcharp69</Text>
-            <Text style={styles.bio}>Cuisiner, partager, se régaler 👨‍🍳</Text>
+            <Text style={styles.bio}>
+              Cuisiner, partager, se régaler 👨‍🍳
+            </Text>
           </View>
-
-          <Text style={styles.settings}>⚙️</Text>
         </View>
 
         <View style={styles.statsRow}>
-          <StatCard icon="👨‍🍳" value="28" label="recettes" />
-          <StatCard icon="👥" value="109" label="amis" />
-          <StatCard icon="✉️" value="" label="en attente" badge="3" />
+          <StatCard icon={<ChefHat size={26} color={COLORS.textPrimary}/>} value="28" label="recettes" />
+          <StatCard icon={<UsersRound size={26} color={COLORS.textPrimary}/>} value="109" label="amis" />
+          <StatCard icon={<Mail size={26} color={COLORS.textPrimary}/>} value="" label="en attente" badge="3" />
         </View>
 
         <Text style={styles.sectionTitle}>Mes recettes</Text>
@@ -45,7 +61,12 @@ export default function ProfileScreen() {
 
         <View style={styles.grid}>
           {recipes.map((recipe) => (
-            <RecipeCard key={recipe.id} {...recipe} />
+            <RecipeCard
+              key={recipe.recipeID}
+              recipe={recipe}
+              color={recipe.color}
+              icon={recipe.icon}
+            />
           ))}
         </View>
       </ScrollView>
@@ -61,52 +82,80 @@ export default function ProfileScreen() {
   );
 }
 
-const recipes = [
+const recipes: RecipeWithStyle[] = [
   {
-    id: 1,
-    title: "Tarte aux pommes",
-    time: "1h30min",
-    tag: "Tarte",
+    recipeID: 1,
+    name: "Tarte aux pommes",
+    dateCreation: new Date(),
+    prepTime: 30,
+    cookTime: 60,
+    photo:
+      "https://images.unsplash.com/photo-1621743478914-cc8a86d7e7b5?w=400",
+    portion: 6,
+    description: "Une tarte aux pommes maison.",
+    ingredients: [],
     color: "#FBE9DC",
-    image: "https://images.unsplash.com/photo-1621743478914-cc8a86d7e7b5?w=400",
   },
   {
-    id: 2,
-    title: "Brownie",
-    time: "45min",
-    tag: "Goûter",
+    recipeID: 2,
+    name: "Brownie",
+    dateCreation: new Date(),
+    prepTime: 15,
+    cookTime: 30,
+    photo:
+      "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=400",
+    portion: 8,
+    description: "Un brownie fondant.",
+    ingredients: [],
     color: "#FDF0E6",
-    image: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=400",
   },
   {
-    id: 3,
-    title: "Cheesecake",
-    time: "2h15min",
-    tag: "Dessert",
+    recipeID: 3,
+    name: "Cheesecake",
+    dateCreation: new Date(),
+    prepTime: 25,
+    cookTime: 110,
+    photo:
+      "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=400",
+    portion: 6,
+    description: "Un cheesecake crémeux.",
+    ingredients: [],
     color: "#FDEAF2",
-    image: "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=400",
   },
+  
   {
-    id: 4,
-    title: "Baguette",
-    time: "1h30min",
-    tag: "Pain",
+    recipeID: 4,
+    name: "Baguette",
+    dateCreation: new Date(),
+    prepTime: 30,
+    cookTime: 60,
+    portion: 4,
+    description: "Pain maison.",
+    ingredients: [],
     color: "#EFF8EA",
     icon: "🥖",
   },
   {
-    id: 5,
-    title: "Cookies",
-    time: "30min",
-    tag: "Goûter",
+    recipeID: 5,
+    name: "Cookies",
+    dateCreation: new Date(),
+    prepTime: 15,
+    cookTime: 15,
+    portion: 10,
+    description: "Cookies maison.",
+    ingredients: [],
     color: "#EAF6FC",
     icon: "🍪",
   },
   {
-    id: 6,
-    title: "Pain au lait",
-    time: "2h",
-    tag: "Petit déjeuner",
+    recipeID: 6,
+    name: "Pain au lait",
+    dateCreation: new Date(),
+    prepTime: 40,
+    cookTime: 80,
+    portion: 6,
+    description: "Pain au lait moelleux.",
+    ingredients: [],
     color: "#EAF8F0",
     icon: "🥛",
   },
@@ -118,7 +167,7 @@ function StatCard({
   label,
   badge,
 }: {
-  icon: string;
+  icon: ReactNode;
   value: string;
   label: string;
   badge?: string;
@@ -130,45 +179,13 @@ function StatCard({
           <Text style={styles.badgeText}>{badge}</Text>
         </View>
       )}
-      <Text style={styles.statIcon}>{icon}</Text>
-      {value !== "" && <Text style={styles.statValue}>{value}</Text>}
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
 
-function RecipeCard({
-  title,
-  time,
-  tag,
-  color,
-  image,
-  icon,
-}: {
-  title: string;
-  time: string;
-  tag: string;
-  color: string;
-  image?: string;
-  icon?: string;
-}) {
-  return (
-    <View style={[styles.recipeCard, { backgroundColor: color }]}>
-      {image ? (
-        <Image source={{ uri: image }} style={styles.recipeImage} />
-      ) : (
-        <View style={styles.recipeIconCircle}>
-          <Text style={styles.recipeIcon}>{icon}</Text>
-        </View>
-      )}
+      <View style={styles.statIcon}>{icon}</View>
 
-      <View style={styles.recipeContent}>
-        <Text style={styles.recipeTitle}>{title}</Text>
-        <Text style={styles.recipeTime}>🕒 {time}</Text>
-        <View style={styles.tag}>
-          <Text style={styles.tagText}>{tag}</Text>
-        </View>
-      </View>
+      <Text style={styles.statText}>
+        {value !== "" && <Text style={styles.statValue}>{value} </Text>}
+        <Text style={styles.statLabel}>{label}</Text>
+      </Text>
     </View>
   );
 }
@@ -184,7 +201,9 @@ function NavItem({
 }) {
   return (
     <View style={styles.navItem}>
-      <Text style={[styles.navIcon, active && styles.activeText]}>{icon}</Text>
+      <Text style={[styles.navIcon, active && styles.activeText]}>
+        {icon}
+      </Text>
       <Text style={[styles.navLabel, active && styles.activeText]}>
         {label}
       </Text>
@@ -199,11 +218,18 @@ const styles = StyleSheet.create({
     paddingTop: 45,
   },
 
+  settings: {
+    position: "absolute",
+    top: 50,
+    right: 24,
+    zIndex: 10,
+  },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 24,
-    marginBottom: 28,
+    marginBottom: 12,
   },
 
   avatar: {
@@ -230,50 +256,52 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 
-  settings: {
-    fontSize: 32,
-    color: COLORS.textPrimary,
-  },
-
   statsRow: {
     flexDirection: "row",
     gap: 12,
     paddingHorizontal: 24,
-    marginBottom: 30,
+    marginBottom: 15,
   },
 
   statCard: {
     flex: 1,
-    height: 100,
+    height: 60,
     backgroundColor: COLORS.secondaryBackground,
-    borderRadius: 22,
+    borderRadius: 20,
     alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
+    justifyContent: "flex-start", 
+    paddingTop: 1, 
   },
 
   statIcon: {
-    fontSize: 28,
+    marginTop: 5, 
+    marginBottom: 0,
+  },
+
+  statText: {
+    flexDirection: "row", 
   },
 
   statValue: {
-    fontSize: 28,
-    fontWeight: "800",
+    fontSize: 20,
+    fontWeight: "700",
     color: COLORS.textPrimary,
+    marginTop: 0, 
+    marginBottom: 5,
   },
 
   statLabel: {
-    fontSize: 14,
+    fontSize: 16,
     color: COLORS.textPrimary,
   },
 
   badge: {
     position: "absolute",
-    top: -10,
-    right: -6,
+    top: -8,
+    right: -4,
     backgroundColor: COLORS.error,
-    width: 32,
-    height: 32,
+    width: 27,
+    height: 27,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
@@ -296,65 +324,9 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 14,
+    justifyContent: "space-between", 
     paddingHorizontal: 24,
     paddingBottom: 120,
-  },
-
-  recipeCard: {
-    width: "48%",
-    height: 165,
-    borderRadius: 22,
-    overflow: "hidden",
-    flexDirection: "row",
-  },
-
-  recipeImage: {
-    width: "50%",
-    height: "100%",
-  },
-
-  recipeIconCircle: {
-    width: "48%",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  recipeIcon: {
-    fontSize: 52,
-  },
-
-  recipeContent: {
-    flex: 1,
-    padding: 12,
-    justifyContent: "center",
-  },
-
-  recipeTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: COLORS.textPrimary,
-    marginBottom: 10,
-  },
-
-  recipeTime: {
-    fontSize: 13,
-    color: COLORS.textPrimary,
-    marginBottom: 10,
-  },
-
-  tag: {
-    alignSelf: "flex-start",
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-
-  tagText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "700",
   },
 
   navbar: {
@@ -376,7 +348,7 @@ const styles = StyleSheet.create({
 
   navIcon: {
     fontSize: 28,
-    color: COLORS.textPrimary,
+    color: COLORS.card,
   },
 
   navLabel: {
