@@ -2,8 +2,8 @@
 
 import { View, Text, Image, StyleSheet } from "react-native";
 import { Clock, Flame } from "lucide-react-native";
-import { COLORS } from "../../constants";
-import type { Recipe } from "../../types/recipe";
+import { COLORS } from "../../../constants";
+import type { Recipe } from "../../../types/recipe";
 
 type RecipeCardProps = {
   recipe: Recipe;

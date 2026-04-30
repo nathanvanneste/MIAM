@@ -2,11 +2,12 @@
 import { useState } from "react";
 import { View, Text, StyleSheet, Image, ScrollView, Pressable} from "react-native";
 import SearchBar from "../components/ui/SearchBar";
-import RecipeCard from "../components/ui/RecipeCard";
+import RecipeCard from "../components/ui/Recipe/RecipeCard";
 import { COLORS } from "../constants";
 import { Settings, ChefHat, UsersRound, Mail } from "lucide-react-native";
 import type { ReactNode } from "react";
 import type { Recipe } from "../types/recipe";
+import Grid from "../components/ui/Recipe/Grid";
 
 type RecipeWithStyle = Recipe & {
   color?: string;
@@ -59,7 +60,7 @@ export default function ProfileScreen() {
           filterButtonColor={COLORS.secondaryBackground}
         />
 
-        <View style={styles.grid}>
+        <Grid>
           {recipes.map((recipe) => (
             <RecipeCard
               key={recipe.recipeID}
@@ -68,7 +69,8 @@ export default function ProfileScreen() {
               icon={recipe.icon}
             />
           ))}
-        </View>
+        </Grid>
+
       </ScrollView>
 
       <View style={styles.navbar}>
@@ -319,14 +321,6 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     paddingHorizontal: 24,
     marginBottom: 14,
-  },
-
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between", 
-    paddingHorizontal: 24,
-    paddingBottom: 120,
   },
 
   navbar: {
