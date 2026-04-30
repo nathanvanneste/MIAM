@@ -51,7 +51,7 @@ export default function WelcomeScreen() {
 
                         <TouchableOpacity
                             style={styles.loginButton}
-                            onPress={() => router.replace('/(tabs)/feed')}
+                            onPress={() => router.replace('/(tabs)/profile')}
                         >
                             <Text style={styles.loginButtonText}>Se connecter</Text>
                         </TouchableOpacity>
