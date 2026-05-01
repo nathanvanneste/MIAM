@@ -25,8 +25,8 @@ export const COLORS = {
   tagBackground: "#FFE6BF",
 };
 export const ROUTES = {
-    HOME: 'Home',
-    RECIPES: 'Recipes',
-    SHOPPING: 'Shopping',
-    PROFILE: 'Profile',
+  HOME: 'Home',
+  RECIPES: 'Recipes',
+  SHOPPING: 'Shopping',
+  PROFILE: 'Profile',
 }

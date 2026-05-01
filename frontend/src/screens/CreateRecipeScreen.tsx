@@ -4,8 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { KeyboardAvoidingView } from 'react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
 import { CreateRecipeDTO } from '@/src/types/recipe'
-//import RecipePhotoPicker from '@/src/components/features/recipe/RecipePhotoPicker'
-//import PortionCounter from '@/src/components/features/recipe/PortionCounter'
+import RecipePhotoPicker from '@/src/components/features/recipe/RecipePhotoPicker'
+import PortionCounter from '@/src/components/features/recipe/PortionCounter'
+import IngredientSearch from '@/src/components/features/recipe/IngredientSearch'
 
 export default function CreateRecipeScreen() {
     const [form, setForm] = useState<CreateRecipeDTO>({
@@ -35,7 +36,7 @@ export default function CreateRecipeScreen() {
                             <Text style={styles.title}>Créer une recette</Text>
                             <Text style={styles.subtitle}>Remplissez les informations de votre recette</Text>
                         </View>
-                        {/*<RecipePhotoPicker onPhotoChange={(uri) => setForm({ ...form, photoUri: uri })} />*/}
+                        <RecipePhotoPicker onPhotoChange={(uri) => setForm({ ...form, photoUri: uri })} />
                     </View>
 
                     {/* Nom */}
@@ -51,10 +52,10 @@ export default function CreateRecipeScreen() {
                     <View style={styles.row}>
                         <View style={styles.rowItem}>
                             <Text style={styles.label}>Personnes</Text>
-                            {/*<PortionCounter
+                            <PortionCounter
                                 value={form.portions}
                                 onChange={(value) => setForm({ ...form, portions: value })}
-                            />*/}
+                            />
                         </View>
                         <View style={styles.rowItem}>
                             <Text style={styles.label}>Temps de préparation (min)</Text>
@@ -70,9 +71,8 @@ export default function CreateRecipeScreen() {
 
                     {/* Ingrédients — à venir */}
                     <Text style={styles.label}>Ingrédients</Text>
-                    <View style={styles.placeholder}>
-                        <Text style={styles.placeholderText}>Recherche d'ingrédients — à venir</Text>
-                    </View>
+                    <IngredientSearch onChange={(ingredients) => setForm({ ...form, recipeIngredients: ingredients })} />
+
 
                     {/* Catégories — à venir */}
                     <Text style={styles.label}>Catégories</Text>

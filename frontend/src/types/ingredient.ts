@@ -1,7 +1,7 @@
 export type Ingredient = {
-    ingredientID: number;
+    id: number;
     name: string;
-    category: string;
-    calories: number;
-    unitDefault: string;
+    category?: string;
+    calories?: number;
+    unit: string;
 };
