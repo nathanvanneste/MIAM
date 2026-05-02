@@ -6,3 +6,9 @@ export type RecipeIngredient = {
     quantity: number;
 
 };
+
+export type CreateRecipeIngredientDTO = {
+    ingredientID: number
+    quantity: number
+    unitID: number
+}

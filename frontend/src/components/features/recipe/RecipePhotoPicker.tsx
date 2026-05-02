@@ -62,21 +62,22 @@ export default function RecipePhotoPicker({ onPhotoChange }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    width: 80,
-    height: 80,
+    width: 90,   // ← un peu plus grand
+    height: 90,
   },
   photo: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius.md,
+    width: 90,
+    height: 90,
+    borderRadius: BorderRadius.lg,  // ← plus arrondi
   },
   placeholder: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius.md,
+    width: 90,
+    height: 90,
+    borderRadius: BorderRadius.lg,
     backgroundColor: Colors.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: Colors.border,
+    borderStyle: 'dashed',  // ← pointillés pour indiquer que c'est cliquable
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -84,9 +85,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -6,
     right: -6,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',

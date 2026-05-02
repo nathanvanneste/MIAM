@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { KeyboardAvoidingView } from 'react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
@@ -7,6 +7,21 @@ import { CreateRecipeDTO } from '@/src/types/recipe'
 import RecipePhotoPicker from '@/src/components/features/recipe/RecipePhotoPicker'
 import PortionCounter from '@/src/components/features/recipe/PortionCounter'
 import IngredientSearch from '@/src/components/features/recipe/IngredientSearch'
+import StepList from '@/src/components/features/recipe/StepList'
+import { createRecipe } from '@/src/services/recipes.service'
+import { router } from 'expo-router'
+
+function SectionTitle({ number, title }: { number: string; title: string }) {
+    return (
+        <View style={styles.sectionHeader}>
+            <View style={styles.sectionNumber}>
+                <Text style={styles.sectionNumberText}>{number}</Text>
+            </View>
+            <Text style={styles.sectionTitle}>{title}</Text>
+            <View style={styles.sectionLine} />
+        </View>
+    )
+}
 
 export default function CreateRecipeScreen() {
     const [form, setForm] = useState<CreateRecipeDTO>({
@@ -16,75 +31,105 @@ export default function CreateRecipeScreen() {
         cookTime: 0,
         recipeIngredients: [],
         categories: [],
+        steps: [],
         description: undefined,
         photoUri: undefined,
     })
 
     const handleSave = async () => {
-        // à brancher sur le service plus tard
-        console.log(form)
+        if (!form.name) {
+            Alert.alert('Erreur', 'Le nom de la recette est obligatoire')
+            return
+        }
+        try {
+            await createRecipe(form)
+            Alert.alert('Succès', 'Recette créée !', [
+                { text: 'OK', onPress: () => router.replace('/(tabs)/profile') }
+            ])
+        } catch (e: any) {
+            Alert.alert('Erreur', e.message)
+        }
     }
 
     return (
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
-                <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+                <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
                     {/* Header */}
                     <View style={styles.header}>
-                        <View>
-                            <Text style={styles.title}>Créer une recette</Text>
-                            <Text style={styles.subtitle}>Remplissez les informations de votre recette</Text>
+                        <View style={styles.headerText}>
+                            <Text style={styles.headerEyebrow}>Nouvelle recette</Text>
+                            <Text style={styles.headerTitle}>Créer{'\n'}une recette</Text>
                         </View>
                         <RecipePhotoPicker onPhotoChange={(uri) => setForm({ ...form, photoUri: uri })} />
                     </View>
 
-                    {/* Nom */}
-                    <Text style={styles.label}>Nom de la recette</Text>
+                    {/* Section 1 — Infos de base */}
+                    <SectionTitle number="01" title="Informations" />
+
                     <TextInput
-                        style={styles.input}
-                        placeholder="Ex: Tarte aux pommes"
+                        style={styles.nameInput}
+                        placeholder="Nom de la recette"
                         placeholderTextColor={Colors.textSecondary}
                         onChangeText={(text) => setForm({ ...form, name: text })}
                     />
 
-                    {/* Portions + Temps */}
-                    <View style={styles.row}>
-                        <View style={styles.rowItem}>
-                            <Text style={styles.label}>Personnes</Text>
+                    <View style={styles.metaRow}>
+                        <View style={styles.metaCard}>
+                            <Text style={styles.metaLabel}>Personnes</Text>
                             <PortionCounter
                                 value={form.portions}
                                 onChange={(value) => setForm({ ...form, portions: value })}
                             />
                         </View>
-                        <View style={styles.rowItem}>
-                            <Text style={styles.label}>Temps de préparation (min)</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="30"
-                                placeholderTextColor={Colors.textSecondary}
-                                keyboardType="numeric"
-                                onChangeText={(text) => setForm({ ...form, prepTime: parseInt(text) || 0 })}
-                            />
+                        <View style={styles.metaCard}>
+                            <Text style={styles.metaLabel}>Préparation</Text>
+                            <View style={styles.timeInput}>
+                                <TextInput
+                                    style={styles.timeTextInput}
+                                    placeholder="0"
+                                    placeholderTextColor={Colors.textSecondary}
+                                    keyboardType="numeric"
+                                    onChangeText={(text) => setForm({ ...form, prepTime: parseInt(text) || 0 })}
+                                />
+                                <Text style={styles.timeUnit}>min</Text>
+                            </View>
+                        </View>
+                        <View style={styles.metaCard}>
+                            <Text style={styles.metaLabel}>Cuisson</Text>
+                            <View style={styles.timeInput}>
+                                <TextInput
+                                    style={styles.timeTextInput}
+                                    placeholder="0"
+                                    placeholderTextColor={Colors.textSecondary}
+                                    keyboardType="numeric"
+                                    onChangeText={(text) => setForm({ ...form, cookTime: parseInt(text) || 0 })}
+                                />
+                                <Text style={styles.timeUnit}>min</Text>
+                            </View>
                         </View>
                     </View>
 
-                    {/* Ingrédients — à venir */}
-                    <Text style={styles.label}>Ingrédients</Text>
+                    {/* Section 2 — Ingrédients */}
+                    <SectionTitle number="02" title="Ingrédients" />
                     <IngredientSearch onChange={(ingredients) => setForm({ ...form, recipeIngredients: ingredients })} />
 
+                    {/* Section 3 — Étapes */}
+                    <SectionTitle number="03" title="Étapes" />
+                    <StepList onChange={(steps) => setForm({ ...form, steps })} />
 
-                    {/* Catégories — à venir */}
-                    <Text style={styles.label}>Catégories</Text>
+                    {/* Section 4 — Catégories */}
+                    <SectionTitle number="04" title="Catégories" />
                     <View style={styles.placeholder}>
                         <Text style={styles.placeholderText}>Tags — à venir</Text>
                     </View>
 
-                    {/* Description */}
-                    <Text style={styles.label}>Description <Text style={styles.optional}>(optionnel)</Text></Text>
+                    {/* Section 5 — Description */}
+                    <SectionTitle number="05" title="Description" />
                     <TextInput
                         style={styles.textarea}
-                        placeholder="Décrivez votre recette..."
+                        placeholder="Une courte description de votre recette... (optionnel)"
                         placeholderTextColor={Colors.textSecondary}
                         multiline
                         numberOfLines={4}
@@ -92,7 +137,7 @@ export default function CreateRecipeScreen() {
                     />
 
                     {/* Bouton */}
-                    <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                    <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.85}>
                         <Text style={styles.saveButtonText}>Enregistrer la recette</Text>
                     </TouchableOpacity>
 
@@ -113,54 +158,121 @@ const styles = StyleSheet.create({
     scroll: {
         flexGrow: 1,
         paddingHorizontal: Spacing.xl,
-        paddingVertical: Spacing.xl,
+        paddingBottom: Spacing.xxxl,
     },
+
+    // Header
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: Spacing.lg,
+        alignItems: 'flex-end',
+        paddingTop: Spacing.lg,
+        paddingBottom: Spacing.xl,
     },
-    title: {
-        fontSize: FontSize.xxl,
-        fontWeight: FontWeight.semibold,
-        color: Colors.primary,
+    headerText: {
+        flex: 1,
+    },
+    headerEyebrow: {
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.medium,
+        color: Colors.primaryLight,
+        letterSpacing: 2,
+        textTransform: 'uppercase',
         marginBottom: Spacing.xs,
     },
-    subtitle: {
-        fontSize: FontSize.sm,
-        color: Colors.textSecondary,
-        maxWidth: '70%',
+    headerTitle: {
+        fontSize: 36,
+        fontWeight: FontWeight.bold,
+        color: Colors.primary,
+        lineHeight: 40,
     },
-    label: {
-        fontSize: FontSize.md,
-        fontWeight: FontWeight.medium,
+
+    // Section headers
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        marginTop: Spacing.xl,
+        marginBottom: Spacing.md,
+    },
+    sectionNumber: {
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        backgroundColor: Colors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sectionNumberText: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.bold,
+        color: Colors.surface,
+        letterSpacing: 1,
+    },
+    sectionTitle: {
+        fontSize: FontSize.lg,
+        fontWeight: FontWeight.semibold,
         color: Colors.textPrimary,
-        marginBottom: Spacing.sm,
-        marginTop: Spacing.md,
     },
-    optional: {
-        fontWeight: FontWeight.regular,
-        color: Colors.textSecondary,
+    sectionLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: Colors.border,
     },
-    input: {
-        width: '100%',
-        height: ComponentSize.inputHeight,
+
+    // Nom
+    nameInput: {
+        fontSize: FontSize.xl,
+        fontWeight: FontWeight.semibold,
+        color: Colors.textPrimary,
         backgroundColor: Colors.surface,
         borderRadius: BorderRadius.md,
         borderWidth: 1,
         borderColor: Colors.border,
         paddingHorizontal: Spacing.md,
-        fontSize: FontSize.md,
+        paddingVertical: Spacing.md,
+        height: 56,
+    },
+
+    // Meta row (personnes, prep, cuisson)
+    metaRow: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+        marginTop: Spacing.md,
+    },
+    metaCard: {
+        flex: 1,
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        padding: Spacing.sm,
+    },
+    metaLabel: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.medium,
+        color: Colors.textSecondary,
+        marginBottom: Spacing.xs,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    timeInput: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        height: 36,
+    },
+    timeTextInput: {
+        flex: 1,
+        fontSize: FontSize.lg,
+        fontWeight: FontWeight.semibold,
         color: Colors.textPrimary,
     },
-    row: {
-        flexDirection: 'row',
-        gap: Spacing.md,
+    timeUnit: {
+        fontSize: FontSize.sm,
+        color: Colors.textSecondary,
     },
-    rowItem: {
-        flex: 1,
-    },
+
+    // Textarea
     textarea: {
         backgroundColor: Colors.surface,
         borderRadius: BorderRadius.md,
@@ -173,21 +285,26 @@ const styles = StyleSheet.create({
         minHeight: 100,
         textAlignVertical: 'top',
     },
+
+    // Placeholder
     placeholder: {
         backgroundColor: Colors.surface,
         borderRadius: BorderRadius.md,
         borderWidth: 1,
         borderColor: Colors.border,
-        padding: Spacing.md,
+        borderStyle: 'dashed',
+        padding: Spacing.lg,
         alignItems: 'center',
     },
     placeholderText: {
         color: Colors.textSecondary,
         fontSize: FontSize.sm,
     },
+
+    // Save button
     saveButton: {
         width: '100%',
-        height: ComponentSize.buttonHeight,
+        height: 56,
         backgroundColor: Colors.primary,
         borderRadius: BorderRadius.md,
         alignItems: 'center',
@@ -197,6 +314,7 @@ const styles = StyleSheet.create({
     saveButtonText: {
         color: Colors.surface,
         fontSize: FontSize.lg,
-        fontWeight: FontWeight.semibold,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 0.5,
     },
 })

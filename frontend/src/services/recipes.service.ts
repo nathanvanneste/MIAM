@@ -1,24 +1,19 @@
-import { API_URL } from "../config/api";
-import type { Recipe } from "../types/recipe";
+import { apiFetch } from '@/src/config/api'
+import { CreateRecipeDTO } from '../types/recipe'
 
-export async function getRecipeById(id: number): Promise<Recipe> {
-    const response = await fetch(`${API_URL}/recipes/${id}`);
 
-    if (!response.ok) {
-        throw new Error(`Erreur API: ${response.status}`);
-    }
-
-    return await response.json();
+export const createRecipe = async (form: CreateRecipeDTO) => {
+    return await apiFetch('/recipes', {
+        method: 'POST',
+        body: JSON.stringify({
+            name: form.name,
+            portion: form.portions,
+            prepTime: form.prepTime,
+            cookTime: form.cookTime,
+            photo: form.photoUri,
+            description: form.description,
+            ingredients: form.recipeIngredients,
+            steps: form.steps,
+        }),
+    })
 }
-
-/*export async function getRecipeById(id: number): Promise<Recipe> {
-    return {
-        recipeID: 1,
-        name: "gratin de pates",
-        dateCreation: new Date(28, 3, 2026),
-        nutScore: "A",
-        prepTime: 13,
-        cookTime: 11,
-        portion: 12,
-    };
-}*/

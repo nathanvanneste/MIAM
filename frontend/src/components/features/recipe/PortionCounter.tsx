@@ -34,19 +34,20 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    height: 52,
+    height: 36,  // ← plus compact
   },
   button: {
-    width: 44,
+    width: 28,   // ← plus petit
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   buttonText: {
-    fontSize: FontSize.xl,
+    fontSize: FontSize.lg,
     fontWeight: FontWeight.semibold,
     color: Colors.primary,
   },

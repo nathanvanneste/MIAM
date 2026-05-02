@@ -3,81 +3,99 @@ import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from 'r
 import { X, ChevronDown } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
 import { Ingredient } from '@/src/types/ingredient'
+import { searchIngredients } from '@/src/services/ingredients.service'
+import { UNITS } from '@/src/constants/units'
+import { CreateRecipeIngredientDTO } from '@/src/types/recipeIngredient'
+
 
 type SelectedIngredient = {
     ingredient: Ingredient
     quantity: number
-    unit: string
+    unitID: number
+    unitType: string
 }
 
 type Props = {
-    onChange: (ingredients: SelectedIngredient[]) => void
+    onChange: (ingredients: CreateRecipeIngredientDTO[]) => void
 }
-
-// Données mockées en attendant le service
-const MOCK_INGREDIENTS: Ingredient[] = [
-    { id: 1, name: 'Farine', unit: 'g' },
-    { id: 2, name: 'Sucre', unit: 'g' },
-    { id: 3, name: 'Beurre', unit: 'g' },
-    { id: 4, name: 'Lait', unit: 'ml' },
-    { id: 5, name: 'Œuf', unit: 'unité' },
-    { id: 6, name: 'Sel', unit: 'g' },
-    { id: 7, name: 'Huile', unit: 'ml' },
-]
 
 export default function IngredientSearch({ onChange }: Props) {
     const [search, setSearch] = useState('')
     const [suggestions, setSuggestions] = useState<Ingredient[]>([])
     const [selected, setSelected] = useState<SelectedIngredient[]>([])
 
-    const handleSearch = (text: string) => {
+    const handleSearch = async (text: string) => {
         setSearch(text)
         if (text.length < 1) {
             setSuggestions([])
             return
         }
-        const filtered = MOCK_INGREDIENTS.filter(i =>
-            i.name.toLowerCase().includes(text.toLowerCase()) &&
-            !selected.find(s => s.ingredient.id === i.id)
-        )
-        setSuggestions(filtered)
+        try {
+            const results = await searchIngredients(text)
+            const filtered = results.filter(i => !selected.find(s => s.ingredient.ingredientID === i.ingredientID))
+            setSuggestions(filtered)
+        } catch (e) {
+            setSuggestions([])
+        }
     }
 
+
     const handleSelect = (ingredient: Ingredient) => {
-        const newSelected = [
+        const defaultUnit = UNITS.find(u => u.type === ingredient.unitDefault)
+        const newSelected: SelectedIngredient[] = [
             ...selected,
-            { ingredient, quantity: 1, unit: ingredient.unit }
+            {
+                ingredient,
+                quantity: 1,
+                unitID: defaultUnit?.unitID ?? 1,
+                unitType: defaultUnit?.type ?? ingredient.unitDefault,
+            }
         ]
         setSelected(newSelected)
-        onChange(newSelected)
+        onChange(newSelected.map(s => ({
+            ingredientID: s.ingredient.ingredientID,
+            quantity: s.quantity,
+            unitID: s.unitID,
+        })))
         setSearch('')
         setSuggestions([])
     }
 
     const handleRemove = (id: number) => {
-        const newSelected = selected.filter(s => s.ingredient.id !== id)
+        const newSelected = selected.filter(s => s.ingredient.ingredientID !== id)
         setSelected(newSelected)
-        onChange(newSelected)
+        onChange(newSelected.map(s => ({
+            ingredientID: s.ingredient.ingredientID,
+            quantity: s.quantity,
+            unitID: s.unitID,
+        })))
     }
 
     const handleQuantityChange = (id: number, quantity: string) => {
         const newSelected = selected.map(s =>
-            s.ingredient.id === id ? { ...s, quantity: parseFloat(quantity) || 0 } : s
+            s.ingredient.ingredientID === id ? { ...s, quantity: parseFloat(quantity) || 0 } : s
         )
         setSelected(newSelected)
-        onChange(newSelected)
+        onChange(newSelected.map(s => ({
+            ingredientID: s.ingredient.ingredientID,
+            quantity: s.quantity,
+            unitID: s.unitID,
+        })))
     }
 
     const handleUnitChange = (id: number) => {
-        const units = ['g', 'ml', 'unité']
         const newSelected = selected.map(s => {
-            if (s.ingredient.id !== id) return s
-            const currentIndex = units.indexOf(s.unit)
-            const nextUnit = units[(currentIndex + 1) % units.length]
-            return { ...s, unit: nextUnit }
+            if (s.ingredient.ingredientID !== id) return s
+            const currentIndex = UNITS.findIndex(u => u.unitID === s.unitID)
+            const nextUnit = UNITS[(currentIndex + 1) % UNITS.length]
+            return { ...s, unitID: nextUnit.unitID, unitType: nextUnit.type }
         })
         setSelected(newSelected)
-        onChange(newSelected)
+        onChange(newSelected.map(s => ({
+            ingredientID: s.ingredient.ingredientID,
+            quantity: s.quantity,
+            unitID: s.unitID,
+        })))
     }
 
     return (
@@ -96,7 +114,7 @@ export default function IngredientSearch({ onChange }: Props) {
                 <View style={styles.dropdown}>
                     {suggestions.map(ingredient => (
                         <TouchableOpacity
-                            key={ingredient.id}
+                            key={String(ingredient.ingredientID)}
                             style={styles.suggestion}
                             onPress={() => handleSelect(ingredient)}
                         >
@@ -109,7 +127,7 @@ export default function IngredientSearch({ onChange }: Props) {
 
             {/* Ingrédients sélectionnés */}
             {selected.map(item => (
-                <View key={item.ingredient.id} style={styles.selectedItem}>
+                <View key={item.ingredient.ingredientID} style={styles.selectedItem}>
                     <Text style={styles.ingredientName}>{item.ingredient.name}</Text>
 
                     <View style={styles.controls}>
@@ -117,18 +135,18 @@ export default function IngredientSearch({ onChange }: Props) {
                             style={styles.quantityInput}
                             value={String(item.quantity)}
                             keyboardType="numeric"
-                            onChangeText={(text) => handleQuantityChange(item.ingredient.id, text)}
+                            onChangeText={(text) => handleQuantityChange(item.ingredient.ingredientID, text)}
                         />
 
                         <TouchableOpacity
                             style={styles.unitButton}
-                            onPress={() => handleUnitChange(item.ingredient.id)}
+                            onPress={() => handleUnitChange(item.ingredient.ingredientID)}
                         >
-                            <Text style={styles.unitText}>{item.unit}</Text>
+                            <Text style={styles.unitText}>{item.unitType}</Text>
                             <ChevronDown size={12} color={Colors.textSecondary} />
                         </TouchableOpacity>
 
-                        <TouchableOpacity onPress={() => handleRemove(item.ingredient.id)}>
+                        <TouchableOpacity onPress={() => handleRemove(item.ingredient.ingredientID)}>
                             <X size={18} color={Colors.error} />
                         </TouchableOpacity>
                     </View>

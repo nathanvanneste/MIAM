@@ -3,7 +3,7 @@ import { Plus, UsersRound, CircleUserRound, Compass, ShoppingCart } from 'lucide
 
 export default function TabsLayout() {
     return (
-        <Tabs screenOptions={{ tabBarShowLabel: false, headerShown: true }}>
+        <Tabs screenOptions={{ tabBarShowLabel: false, headerShown: false }}>
             <Tabs.Screen
                 name="create-recipe"
                 options={{
