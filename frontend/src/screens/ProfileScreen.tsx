@@ -1,16 +1,16 @@
 // src/screens/ProfileScreen.tsx
 import { useState } from "react";
-import { View, Text, StyleSheet, Image, ScrollView, Pressable} from "react-native";
+import { Text, StyleSheet, ScrollView, Pressable} from "react-native";
 import SearchBar from "../components/ui/SearchBar";
 import RecipeCard from "../components/ui/Recipe/RecipeCard";
 import { Colors } from "../constants/colors";
 import { FontSize, FontWeight } from "../constants/typography";
-import { Settings, ChefHat, UsersRound, Mail } from "lucide-react-native";
-import type { ReactNode } from "react";
+import { Settings } from "lucide-react-native";
 import type { Recipe } from "../types/recipe";
 import Grid from "../components/ui/Recipe/RecipeGrid";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ProfileDescription from "../components/ui/Profile/ProfileDescription";
+import { router } from "expo-router";
 
 type RecipeWithStyle = Recipe & {
   color?: string;
@@ -27,7 +27,7 @@ export default function ProfileScreen() {
 
         <Pressable
         style={styles.settings}
-        onPress={() => console.log("settings")}
+        onPress={() => router.push('/register')}
       >
         <Settings size={26} color={Colors.textPrimary} />
       </Pressable>
