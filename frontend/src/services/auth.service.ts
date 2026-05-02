@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase';
+import { RegisterDTO } from '../types/user';
 import { apiFetch } from './api.service';
 
 export async function signIn(email: string, password: string) {
@@ -12,16 +13,10 @@ export async function signIn(email: string, password: string) {
   return data;
 }
 
-export async function signUp(
-  email: string,
-  password: string,
-  firstName: string,
-  lastName: string,
-  pseudo: string,
-) {
+export async function register(form: RegisterDTO) {
   const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
+    email: form.email,
+    password: form.password,
   });
 
   if (error) throw error;
@@ -37,9 +32,9 @@ export async function signUp(
   await apiFetch('/users/me', {
     method: 'POST',
     body: JSON.stringify({
-      firstName,
-      lastName,
-      pseudo,
+      firstName: form.firstName,
+      lastName: form.lastName,
+      pseudo: form.pseudo,
     }),
   });
 

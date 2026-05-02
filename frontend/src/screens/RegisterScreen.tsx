@@ -8,7 +8,7 @@ import { RegisterDTO } from "../types/user";
 import { isPasswordValid, isEmailValid } from "../utils/validation"
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from "../constants";
 import PasswordInput from '@/src/components/ui/PasswordInput'
-//import { register } from '@/src/services/auth.service'
+import { register } from '@/src/services/auth.service'
 
 export default function RegisterScreen() {
     const [error, setError] = useState<string | null>(null)
@@ -40,7 +40,7 @@ export default function RegisterScreen() {
             return
         }
         try {
-            //await register(form) à décomenter quand le service d authentification existera
+            await register(form)
             Alert.alert(
                 'Compte créé !',
                 'Tu peux maintenant te connecter.',

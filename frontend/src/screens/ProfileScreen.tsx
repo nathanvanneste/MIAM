@@ -1,6 +1,10 @@
 // src/screens/ProfileScreen.tsx
 import { useState } from "react";
+<<<<<<< HEAD
 import { Text, StyleSheet, ScrollView, Pressable} from "react-native";
+=======
+import { View, Text, StyleSheet, Image, ScrollView, Pressable } from "react-native";
+>>>>>>> smartpld
 import SearchBar from "../components/ui/SearchBar";
 import RecipeCard from "../components/ui/Recipe/RecipeCard";
 import { Colors } from "../constants/colors";
@@ -32,6 +36,7 @@ export default function ProfileScreen() {
         <Settings size={26} color={Colors.textPrimary} />
       </Pressable>
 
+<<<<<<< HEAD
         <ProfileDescription
           avatarUrl="https://api.dicebear.com/7.x/adventurer/png?seed=paul"
           username="paulcharp69"
@@ -40,6 +45,13 @@ export default function ProfileScreen() {
           friendsCount={109}
           pendingCount={3}
         />
+=======
+        <View style={styles.statsRow}>
+          <StatCard icon={<ChefHat size={26} color={COLORS.textPrimary} />} value="28" label="recettes" />
+          <StatCard icon={<UsersRound size={26} color={COLORS.textPrimary} />} value="109" label="amis" />
+          <StatCard icon={<Mail size={26} color={COLORS.textPrimary} />} value="" label="en attente" badge="3" />
+        </View>
+>>>>>>> smartpld
 
         <Text style={styles.sectionTitle}>Mes recettes</Text>
 
@@ -112,6 +124,10 @@ const recipes: RecipeWithStyle[] = [
     recipeIngredients: [],
     color: "#FDEAF2",
   },
+<<<<<<< HEAD
+=======
+
+>>>>>>> smartpld
   {
     recipeID: 4,
     name: "Baguette",
@@ -222,9 +238,15 @@ const styles = StyleSheet.create({
   },
 
   statValue: {
+<<<<<<< HEAD
     fontSize: FontSize.xl,
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
+=======
+    fontSize: 20,
+    fontWeight: "700",
+    color: COLORS.textPrimary,
+>>>>>>> smartpld
     marginTop: 0,
     marginBottom: 5,
   },

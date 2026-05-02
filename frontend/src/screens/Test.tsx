@@ -2,7 +2,7 @@ import { View, ScrollView, StyleSheet } from "react-native";
 import GroupCard from "../components/ui/Group/GroupCard";
 import PrimaryButton from "../components/ui/PrimaryButton";
 import OutlineButton from "../components/ui/OutlineButton";
-import { COLORS } from "../constants";
+import { Colors } from "../constants";
 import GroupList from "../components/ui/Group/GroupList";
 import SelectableIngredient from "../components/ui/Ingredient/SelectableIngredient";
 import { useState } from "react";
