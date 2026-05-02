@@ -3,11 +3,14 @@ import { useState } from "react";
 import { View, Text, StyleSheet, Image, ScrollView, Pressable} from "react-native";
 import SearchBar from "../components/ui/SearchBar";
 import RecipeCard from "../components/ui/Recipe/RecipeCard";
-import { COLORS } from "../constants";
+import { Colors } from "../constants/colors";
+import { FontSize, FontWeight } from "../constants/typography";
 import { Settings, ChefHat, UsersRound, Mail } from "lucide-react-native";
 import type { ReactNode } from "react";
 import type { Recipe } from "../types/recipe";
 import Grid from "../components/ui/Recipe/RecipeGrid";
+import { SafeAreaView } from "react-native-safe-area-context";
+import ProfileDescription from "../components/ui/Profile/ProfileDescription";
 
 type RecipeWithStyle = Recipe & {
   color?: string;
@@ -18,36 +21,25 @@ export default function ProfileScreen() {
   const [search, setSearch] = useState("");
 
   return (
-    <View style={styles.container}>
-      <Pressable
+    <SafeAreaView style={styles.container}>
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+
+        <Pressable
         style={styles.settings}
         onPress={() => console.log("settings")}
       >
-        <Settings size={26} color={COLORS.textPrimary} />
+        <Settings size={26} color={Colors.textPrimary} />
       </Pressable>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Image
-            source={{
-              uri: "https://api.dicebear.com/7.x/adventurer/png?seed=paul",
-            }}
-            style={styles.avatar}
-          />
-
-          <View style={styles.headerText}>
-            <Text style={styles.username}>@paulcharp69</Text>
-            <Text style={styles.bio}>
-              Cuisiner, partager, se régaler 👨‍🍳
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.statsRow}>
-          <StatCard icon={<ChefHat size={26} color={COLORS.textPrimary}/>} value="28" label="recettes" />
-          <StatCard icon={<UsersRound size={26} color={COLORS.textPrimary}/>} value="109" label="amis" />
-          <StatCard icon={<Mail size={26} color={COLORS.textPrimary}/>} value="" label="en attente" badge="3" />
-        </View>
+        <ProfileDescription
+          avatarUrl="https://api.dicebear.com/7.x/adventurer/png?seed=paul"
+          username="paulcharp69"
+          bio="Cuisiner, partager, se régaler 👨‍🍳"
+          recipesCount={28}
+          friendsCount={109}
+          pendingCount={3}
+        />
 
         <Text style={styles.sectionTitle}>Mes recettes</Text>
 
@@ -57,37 +49,33 @@ export default function ProfileScreen() {
           onChangeText={setSearch}
           showFilter
           onFilterPress={() => console.log("Filtre pressé")}
-          filterButtonColor={COLORS.secondaryBackground}
+          filterButtonColor={Colors.surface}
         />
 
         <Grid>
-          {recipes.map((recipe) => (
-            <RecipeCard
-              key={recipe.recipeID}
-              recipe={recipe}
-              color={recipe.color}
-              icon={recipe.icon}
-            />
-          ))}
+          {(cardWidth) =>
+            recipes.map((recipe) => (
+              <RecipeCard
+                key={recipe.recipeID}
+                recipe={recipe}
+                color={recipe.color}
+                icon={recipe.icon}
+                cardWidth={cardWidth} // ← Grid lui dit exactement quelle largeur prendre
+              />
+            ))
+          }
         </Grid>
 
       </ScrollView>
 
-      <View style={styles.navbar}>
-        <NavItem icon="＋" label="Créer" />
-        <NavItem icon="👥" label="Groupes" />
-        <NavItem icon="👤" label="Profil" active />
-        <NavItem icon="🧭" label="Découvrir" />
-        <NavItem icon="🛒" label="Courses" />
-      </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const recipes: RecipeWithStyle[] = [
   {
     recipeID: 1,
-    name: "Tarte aux pommes",
+    name: "Tarte aux pommes et aux noix",
     dateCreation: new Date(),
     prepTime: 30,
     cookTime: 60,
@@ -124,7 +112,6 @@ const recipes: RecipeWithStyle[] = [
     recipeIngredients: [],
     color: "#FDEAF2",
   },
-  
   {
     recipeID: 4,
     name: "Baguette",
@@ -163,66 +150,16 @@ const recipes: RecipeWithStyle[] = [
   },
 ];
 
-function StatCard({
-  icon,
-  value,
-  label,
-  badge,
-}: {
-  icon: ReactNode;
-  value: string;
-  label: string;
-  badge?: string;
-}) {
-  return (
-    <View style={styles.statCard}>
-      {badge && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{badge}</Text>
-        </View>
-      )}
-
-      <View style={styles.statIcon}>{icon}</View>
-
-      <Text style={styles.statText}>
-        {value !== "" && <Text style={styles.statValue}>{value} </Text>}
-        <Text style={styles.statLabel}>{label}</Text>
-      </Text>
-    </View>
-  );
-}
-
-function NavItem({
-  icon,
-  label,
-  active,
-}: {
-  icon: string;
-  label: string;
-  active?: boolean;
-}) {
-  return (
-    <View style={styles.navItem}>
-      <Text style={[styles.navIcon, active && styles.activeText]}>
-        {icon}
-      </Text>
-      <Text style={[styles.navLabel, active && styles.activeText]}>
-        {label}
-      </Text>
-    </View>
-  );
-}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
-    paddingTop: 45,
+    backgroundColor: Colors.background,
   },
 
   settings: {
     position: "absolute",
-    top: 50,
+    top: 8,
     right: 24,
     zIndex: 10,
   },
@@ -247,14 +184,14 @@ const styles = StyleSheet.create({
   },
 
   username: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: COLORS.textPrimary,
+    fontSize: FontSize.xxxl,
+    fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
   },
 
   bio: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
+    fontSize: FontSize.md,
+    color: Colors.textSecondary,
     marginTop: 6,
   },
 
@@ -268,40 +205,40 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     height: 60,
-    backgroundColor: COLORS.secondaryBackground,
+    backgroundColor: Colors.cardLight,
     borderRadius: 20,
     alignItems: "center",
-    justifyContent: "flex-start", 
-    paddingTop: 1, 
+    justifyContent: "flex-start",
+    paddingTop: 1,
   },
 
   statIcon: {
-    marginTop: 5, 
+    marginTop: 5,
     marginBottom: 0,
   },
 
   statText: {
-    flexDirection: "row", 
+    flexDirection: "row",
   },
 
   statValue: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: COLORS.textPrimary,
-    marginTop: 0, 
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
+    marginTop: 0,
     marginBottom: 5,
   },
 
   statLabel: {
-    fontSize: 16,
-    color: COLORS.textPrimary,
+    fontSize: FontSize.lg,
+    color: Colors.textPrimary,
   },
 
   badge: {
     position: "absolute",
     top: -8,
     right: -4,
-    backgroundColor: COLORS.error,
+    backgroundColor: Colors.error,
     width: 27,
     height: 27,
     borderRadius: 16,
@@ -310,48 +247,20 @@ const styles = StyleSheet.create({
   },
 
   badgeText: {
-    color: "white",
-    fontWeight: "800",
-    fontSize: 16,
+    color: Colors.surface,
+    fontWeight: FontWeight.bold,
+    fontSize: FontSize.lg,
   },
 
   sectionTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: COLORS.textPrimary,
+    fontSize: FontSize.xxxl,
+    fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
     paddingHorizontal: 24,
     marginBottom: 14,
   },
 
-  navbar: {
-    position: "absolute",
-    bottom: 20,
-    left: 24,
-    right: 24,
-    height: 92,
-    backgroundColor: COLORS.card,
-    borderRadius: 28,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-  },
-
-  navItem: {
-    alignItems: "center",
-  },
-
-  navIcon: {
-    fontSize: 28,
-    color: COLORS.card,
-  },
-
-  navLabel: {
-    fontSize: 13,
-    marginTop: 4,
-    color: COLORS.textPrimary,
-  },
-
   activeText: {
-    color: COLORS.primaryDark,
+    color: Colors.primaryLight,
   },
 });

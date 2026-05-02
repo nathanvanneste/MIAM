@@ -1,6 +1,7 @@
 // src/components/ui/PrimaryButton.tsx
-
 import { Pressable, Text, StyleSheet } from "react-native";
+import { Colors } from "../../constants/colors";
+import { FontSize, FontWeight } from "../../constants/typography";
 
 type Props = {
   title: string;
@@ -12,8 +13,8 @@ type Props = {
 export default function PrimaryButton({
   title,
   onPress,
-  backgroundColor = "#F4A23A",
-  textColor = "white",
+  backgroundColor = Colors.primaryButton,
+  textColor = Colors.surface,
 }: Props) {
   return (
     <Pressable
@@ -36,7 +37,7 @@ const styles = StyleSheet.create({
   },
 
   text: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
   },
 });

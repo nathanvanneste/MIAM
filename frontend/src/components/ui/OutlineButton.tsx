@@ -1,7 +1,8 @@
 // src/components/ui/OutlineButton.tsx
-
 import { Pressable, Text, StyleSheet, View } from "react-native";
 import { Plus } from "lucide-react-native";
+import { Colors } from "../../constants/colors";
+import { FontSize, FontWeight } from "../../constants/typography";
 
 type Props = {
   title: string;
@@ -13,18 +14,12 @@ type Props = {
 export default function OutlineButton({
   title,
   onPress,
-  color = "#7FA36C",
-  backgroundColor = "#E8F1E1",
+  color = Colors.primaryLight,
+  backgroundColor = Colors.cardLight,
 }: Props) {
   return (
     <Pressable
-      style={[
-        styles.button,
-        {
-          borderColor: color,
-          backgroundColor,
-        },
-      ]}
+      style={[styles.button, { borderColor: color, backgroundColor }]}
       onPress={onPress}
     >
       <View style={styles.content}>
@@ -51,7 +46,7 @@ const styles = StyleSheet.create({
   },
 
   text: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
   },
 });

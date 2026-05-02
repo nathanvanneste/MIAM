@@ -1,6 +1,7 @@
-import { View, TextInput, StyleSheet, Pressable } from "react-native";
+import { View, TextInput, StyleSheet, Pressable, useWindowDimensions } from "react-native";
 import { Search, SlidersHorizontal } from "lucide-react-native";
-import { COLORS } from "../../constants";
+import { Colors } from "../../constants/colors";
+import { FontSize, FontWeight } from "../../constants/typography";
 
 type SearchBarProps = {
   placeholder: string;
@@ -17,17 +18,49 @@ export default function SearchBar({
   onChangeText,
   onFilterPress,
   showFilter = false,
-  filterButtonColor = COLORS.secondaryBackground,
+  filterButtonColor = Colors.surface,
 }: SearchBarProps) {
+  const { width } = useWindowDimensions();
+
+  const isSmall = width < 360;
+  const isLarge = width >= 768;
+
+  const buttonSize = isSmall ? 44 : isLarge ? 60 : 52;
+  const barHeight = isSmall ? 44 : isLarge ? 60 : 52;
+  const iconSize = isSmall ? 16 : isLarge ? 22 : 18;
+  const filterIconSize = isSmall ? 18 : isLarge ? 24 : 20;
+  const borderRadius = isLarge ? 22 : 18;
+  const paddingH = isSmall ? 16 : isLarge ? 32 : 24;
+  const gap = isSmall ? 8 : isLarge ? 16 : 12;
+
   return (
-    <View style={styles.searchRow}>
-      <View style={styles.searchBar}>
-        <Search size={18} color={COLORS.textSecondary} />
+    <View
+      style={[
+        styles.searchRow,
+        { paddingHorizontal: paddingH, gap },
+      ]}
+    >
+      <View
+        style={[
+          styles.searchBar,
+          {
+            height: barHeight,
+            borderRadius,
+          },
+        ]}
+      >
+        <Search size={iconSize} color={Colors.textSecondary} />
 
         <TextInput
           placeholder={placeholder}
-          placeholderTextColor={COLORS.textLight}
-          style={styles.searchInput}
+          placeholderTextColor={Colors.textSecondary}
+          style={[
+            styles.searchInput,
+            {
+              fontSize: isSmall ? FontSize.sm : isLarge ? FontSize.lg : FontSize.md,
+              fontWeight: FontWeight.regular,
+            },
+          ]}
           value={value}
           onChangeText={onChangeText}
         />
@@ -37,11 +70,16 @@ export default function SearchBar({
         <Pressable
           style={[
             styles.filterButton,
-            { backgroundColor: filterButtonColor },
+            {
+              backgroundColor: filterButtonColor,
+              width: buttonSize,
+              height: buttonSize,
+              borderRadius: buttonSize / 2,
+            },
           ]}
           onPress={onFilterPress}
         >
-          <SlidersHorizontal size={20} color={COLORS.textPrimary} />
+          <SlidersHorizontal size={filterIconSize} color={Colors.textPrimary} />
         </Pressable>
       )}
     </View>
@@ -52,38 +90,29 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 24,
     marginBottom: 20,
   },
 
   searchBar: {
     flex: 1,
-    height: 52,
-    backgroundColor: COLORS.card,
-    borderRadius: 18,
+    backgroundColor: Colors.surface,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
   },
 
   searchInput: {
     flex: 1,
     marginLeft: 10,
-    fontSize: 15,
-    color: COLORS.textPrimary,
+    color: Colors.textPrimary,
   },
 
   filterButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: COLORS.secondaryBackground,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
   },
 });

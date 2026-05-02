@@ -1,4 +1,5 @@
 export const FontSize = {
+    xxs: 11,
     xs: 12,
     sm: 13,
     base: 14,
@@ -7,6 +8,7 @@ export const FontSize = {
     xl: 20,
     xxl: 26,
     xxxl: 28,
+    xxxxl: 36,
 }
 
 export const FontWeight = {

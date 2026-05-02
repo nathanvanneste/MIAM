@@ -1,7 +1,7 @@
 import { View, ScrollView, StyleSheet } from "react-native";
 import GroupCard from "../components/ui/Group/GroupCard";
 import PrimaryButton from "../components/ui/PrimaryButton";
-import AddButton from "../components/ui/AddButton";
+import OutlineButton from "../components/ui/OutlineButton";
 import { COLORS } from "../constants";
 import GroupList from "../components/ui/Group/GroupList";
 import SelectableIngredient from "../components/ui/Ingredient/SelectableIngredient";
@@ -9,6 +9,9 @@ import { useState } from "react";
 
 
 export default function TestUIScreen() {
+  const [checked, setChecked] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       
@@ -43,13 +46,13 @@ export default function TestUIScreen() {
       />
 
       {/* 🔹 Outline Buttons */}
-      <AddButton
+      <OutlineButton
         title="Ajouter un ingrédient"
         onPress={() => {}}
         color="#7FA36C"
       />
 
-      <AddButton
+      <OutlineButton
         title="Créer un groupe"
         onPress={() => {}}
         color="#FF6B6B"
@@ -64,6 +67,7 @@ export default function TestUIScreen() {
             checked={checked}
             quantity={quantity}
             color="#7FA6A4"
+            buttonBackgroundColor="#eafffe"
             onToggle={() => setChecked(!checked)}
             onIncrement={() => setQuantity(quantity + 1)}
             onDecrement={() => setQuantity(Math.max(1, quantity - 1))}
@@ -109,5 +113,3 @@ const styles = StyleSheet.create({
   },
 });
 
-const [checked, setChecked] = useState(false);
-const [quantity, setQuantity] = useState(1);

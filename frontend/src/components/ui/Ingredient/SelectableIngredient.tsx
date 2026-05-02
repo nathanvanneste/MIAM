@@ -1,6 +1,8 @@
+// src/components/ui/Recipe/SelectableQuantityItem.tsx
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Check, Minus, Plus } from "lucide-react-native";
-import { COLORS } from "../../../constants";
+import { Colors } from "../../../constants/colors";
+import { FontSize, FontWeight } from "../../../constants/typography";
 
 type SelectableIngredientProps = {
   title: string;
@@ -10,6 +12,7 @@ type SelectableIngredientProps = {
   onIncrement: () => void;
   onDecrement: () => void;
   color?: string;
+  buttonBackgroundColor?: string;
 };
 
 export default function SelectableQuantityItem({
@@ -19,7 +22,8 @@ export default function SelectableQuantityItem({
   onToggle,
   onIncrement,
   onDecrement,
-  color = COLORS.primary,
+  color = Colors.primary,
+  buttonBackgroundColor = Colors.surface,
 }: SelectableIngredientProps) {
   return (
     <View style={styles.container}>
@@ -33,7 +37,7 @@ export default function SelectableQuantityItem({
         ]}
         onPress={onToggle}
       >
-        {checked && <Check size={18} color="white" strokeWidth={3} />}
+        {checked && <Check size={18} color={Colors.surface} strokeWidth={3} />}
       </Pressable>
 
       <Text style={styles.title} numberOfLines={1}>
@@ -41,7 +45,7 @@ export default function SelectableQuantityItem({
       </Text>
 
       <Pressable
-        style={[styles.quantityButton, { borderColor: color }]}
+        style={[styles.quantityButton, { borderColor: color, backgroundColor: buttonBackgroundColor}]}
         onPress={onDecrement}
       >
         <Minus size={18} color={color} strokeWidth={3} />
@@ -50,7 +54,7 @@ export default function SelectableQuantityItem({
       <Text style={styles.quantity}>{quantity}</Text>
 
       <Pressable
-        style={[styles.quantityButton, { borderColor: color }]}
+        style={[styles.quantityButton, { borderColor: color, backgroundColor: buttonBackgroundColor  }]}
         onPress={onIncrement}
       >
         <Plus size={18} color={color} strokeWidth={3} />
@@ -62,12 +66,12 @@ export default function SelectableQuantityItem({
 const styles = StyleSheet.create({
   container: {
     minHeight: 76,
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.surface,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: Colors.border,
   },
 
   checkbox: {
@@ -82,9 +86,9 @@ const styles = StyleSheet.create({
 
   title: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: "700",
-    color: COLORS.textPrimary,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.medium,
+    color: Colors.textPrimary,
   },
 
   quantityButton: {
@@ -92,7 +96,6 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 10,
     borderWidth: 1.5,
-    backgroundColor: "#EFFFFF",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -100,8 +103,8 @@ const styles = StyleSheet.create({
   quantity: {
     width: 42,
     textAlign: "center",
-    fontSize: 18,
-    fontWeight: "700",
-    color: COLORS.textPrimary,
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
   },
 });

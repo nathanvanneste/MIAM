@@ -1,6 +1,8 @@
-import { View, Text, Image, StyleSheet, Pressable } from "react-native";
+// src/components/ui/Group/GroupCard.tsx
+import { View, Text, Image, StyleSheet, Pressable, useWindowDimensions } from "react-native";
 import { ChevronRight, UsersRound, CookingPot } from "lucide-react-native";
-import { COLORS } from "../../../constants";
+import { Colors } from "../../../constants/colors";
+import { FontSize, FontWeight } from "../../../constants/typography";
 
 type GroupCardProps = {
   image: string;
@@ -17,9 +19,27 @@ export default function GroupCard({
   recipesCount,
   onPress,
 }: GroupCardProps) {
+  const { width } = useWindowDimensions();
+
+  const imageSize = Math.round(width * 0.2);  // ~20% de la largeur écran
+  const cardHeight = Math.round(imageSize * 1.2);
+
   return (
-    <Pressable style={styles.card} onPress={onPress}>
-      <Image source={{ uri: image }} style={styles.image} />
+    <Pressable
+      style={[styles.card, { height: cardHeight }]}
+      onPress={onPress}
+    >
+      <Image
+        source={{ uri: image }}
+        style={[
+          styles.image,
+          {
+            width: imageSize,
+            height: imageSize,
+            borderRadius: imageSize / 2,
+          },
+        ]}
+      />
 
       <View style={styles.content}>
         <Text style={styles.title} numberOfLines={1}>
@@ -27,42 +47,39 @@ export default function GroupCard({
         </Text>
 
         <View style={styles.infoRow}>
-          <UsersRound size={20} color={COLORS.textTertiary} />
+          <UsersRound size={18} color={Colors.primaryMuted} />
           <Text style={styles.infoText}>{membersCount} personnes</Text>
         </View>
 
         <View style={styles.infoRow}>
-          <CookingPot size={20} color={COLORS.textTertiary} />
+          <CookingPot size={18} color={Colors.primaryMuted} />
           <Text style={styles.infoText}>{recipesCount} recettes</Text>
         </View>
       </View>
 
-      <ChevronRight size={22} color={COLORS.textTertiary} />
+      <ChevronRight size={22} color={Colors.primaryMuted} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    height: 100,
-    backgroundColor: COLORS.card,
+    backgroundColor: Colors.surface,
     borderRadius: 23,
     paddingHorizontal: 13,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: Colors.border,
     shadowColor: "#000",
-    shadowOpacity: 0.9,
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 2 },
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 3,
   },
 
   image: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
-    marginRight: 10,
+    marginRight: 12,
   },
 
   content: {
@@ -70,9 +87,9 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: COLORS.textPrimary,
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
     marginBottom: 3,
   },
 
@@ -80,12 +97,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    marginTop: 3,
+    marginTop: 4,
   },
 
   infoText: {
-    fontSize: 18,
-    color: COLORS.textTertiary,
-    fontWeight: "500",
+    fontSize: FontSize.lg,
+    color: Colors.primaryMuted,
+    fontWeight: FontWeight.medium,
   },
 });
