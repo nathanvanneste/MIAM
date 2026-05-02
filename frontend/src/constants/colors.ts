@@ -13,7 +13,6 @@ export const Colors = {
 
     error: '#E53935',
     success: '#4CAF50',
-<<<<<<< HEAD
 
     cardDark : '#F0CAA7',
     cardLight : '#FFE6CF',
@@ -27,6 +26,3 @@ export const Colors = {
     primaryButton: "#FFAC40",
     primaryDarkButton: "#FF8A1F",
 }
-=======
-}
->>>>>>> smartpld
