@@ -28,7 +28,10 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Post('me')
-  createMyProfile(@Req() req: AuthenticatedRequest, @Body() dto: CreateMyProfileDto) {
+  createMyProfile(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateMyProfileDto,
+  ) {
     return this.usersService.createMyProfile(req.user, dto);
   }
 
@@ -36,6 +39,30 @@ export class UsersController {
   @Get('me')
   getMe(@Req() req: AuthenticatedRequest) {
     return this.usersService.findOne(req.user.userID);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  updateMe(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: UpdateUserDto,
+  ) {
+    return this.usersService.update(req.user.userID, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('me')
+  removeMe(@Req() req: AuthenticatedRequest) {
+    return this.usersService.remove(req.user.userID);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me/avatar')
+  updateMyAvatar(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: UpdateMyAvatarDto,
+  ) {
+    return this.usersService.updateMyAvatar(req.user.userID, dto.avatar);
   }
 
   @Get()
@@ -49,44 +76,40 @@ export class UsersController {
     return this.usersService.findOne(userID);
   }
 
-  @Patch(':userID')
-  update(
-    @Param('userID') userID: string,
-    @Body() dto: UpdateUserDto,
-  ) {
-    return this.usersService.update(userID, dto);
-  }
-
-  @Delete(':userID')
-  remove(@Param('userID') userID: string) {
-    return this.usersService.remove(userID);
-  }
-
   @UseGuards(JwtAuthGuard)
   @Post('me/friendships')
-  sendFriendRequest(@Req() req: AuthenticatedRequest, @Body() dto: CreateFriendshipDto) {
+  sendFriendRequest(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateFriendshipDto,
+  ) {
     return this.usersService.sendFriendRequest(req.user.userID, dto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch('friendships/:requesterID/:receiverID')
   updateFriendship(
+    @Req() req: AuthenticatedRequest,
     @Param('requesterID') requesterID: string,
     @Param('receiverID') receiverID: string,
     @Body() dto: UpdateFriendshipStatusDto,
   ) {
     return this.usersService.updateFriendship(
+      req.user.userID,
       requesterID,
       receiverID,
       dto,
     );
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete('friendships/:requesterID/:receiverID')
   removeFriendship(
+    @Req() req: AuthenticatedRequest,
     @Param('requesterID') requesterID: string,
     @Param('receiverID') receiverID: string,
   ) {
     return this.usersService.removeFriendship(
+      req.user.userID,
       requesterID,
       receiverID,
     );
@@ -95,7 +118,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Post('me/saved-recipes')
   saveRecipe(
-    @Req() req: AuthenticatedRequest, 
+    @Req() req: AuthenticatedRequest,
     @Body() dto: SaveRecipeDto,
   ) {
     return this.usersService.saveRecipe(req.user.userID, dto.recipeID);
@@ -114,14 +137,5 @@ export class UsersController {
     @Param('recipeID', ParseIntPipe) recipeID: number,
   ) {
     return this.usersService.unsaveRecipe(req.user.userID, recipeID);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Patch('me/avatar')
-  updateMyAvatar(
-    @Req() req: AuthenticatedRequest,
-    @Body() dto: UpdateMyAvatarDto,
-  ) {
-    return this.usersService.updateMyAvatar(req.user.userID, dto.avatar);
   }
 }
