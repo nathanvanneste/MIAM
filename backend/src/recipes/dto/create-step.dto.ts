@@ -7,6 +7,4 @@ export class CreateStepDto {
   @IsInt()
   order!: number;
 
-  @IsInt()
-  recipeID!: number;
 }

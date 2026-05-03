@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 //import { CreateUserDto } from './dto/create-user.dto';
@@ -36,31 +37,39 @@ private readonly include = {
 };
 
   async createMyProfile(authUser: AuthUser, dto: CreateMyProfileDto) {
-  const existingUser = await this.prisma.user.findUnique({
-    where: {
-      userID: authUser.userID,
-    },
-  });
+    const existingUser = await this.prisma.user.findUnique({
+      where: {
+        userID: authUser.userID,
+      },
+    });
 
-  if (existingUser) {
-    return existingUser;
+    if (existingUser) {
+      return existingUser;
+    }
+
+    if (!authUser.email) {
+      throw new BadRequestException("Impossible de créer le profil : l'email est absent du token.");
+    }
+
+    return this.prisma.user.create({
+      data: {
+        userID: authUser.userID,
+        email: authUser.email,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        pseudo: dto.pseudo,
+        avatar: dto.avatar,
+        shoppingList: {
+          create: {
+            name: `Liste de ${dto.pseudo}`,
+          },
+        },
+      },
+      include: {
+        shoppingList: true,
+      },
+    });
   }
-
-  if (!authUser.email) {
-    throw new BadRequestException('Authenticated user email is missing');
-  }
-
-  return this.prisma.user.create({
-    data: {
-      userID: authUser.userID,
-      email: authUser.email,
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      pseudo: dto.pseudo,
-      avatar: dto.avatar,
-    },
-  });
-}
 
   async findAll() {
     return this.prisma.user.findMany({
@@ -99,7 +108,11 @@ private readonly include = {
 
     return this.prisma.user.update({
       where: { userID },
-      data: dto,
+      data: {
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        pseudo: dto.pseudo,
+      },
     });
   }
 
@@ -126,12 +139,18 @@ private readonly include = {
       throw new NotFoundException(`User with ID ${dto.receiverID} not found`);
     }
 
-    const existing = await this.prisma.friendship.findUnique({
+    const existing = await this.prisma.friendship.findFirst({
       where: {
-        requesterID_receiverID: {
-          requesterID: requesterID,
-          receiverID: dto.receiverID,
-        },
+        OR: [
+          {
+            requesterID,
+            receiverID: dto.receiverID,
+          },
+          {
+            requesterID: dto.receiverID,
+            receiverID: requesterID,
+          },
+        ],
       },
     });
 
@@ -148,6 +167,7 @@ private readonly include = {
   }
 
   async updateFriendship(
+    userID: string,
     requesterID: string,
     receiverID: string,
     dto: UpdateFriendshipStatusDto,
@@ -162,7 +182,16 @@ private readonly include = {
     });
 
     if (!friendship) {
-      throw new NotFoundException('Friendship not found');
+      throw new NotFoundException("Relation d'amitié introuvable.");
+    }
+
+    const isConcerned =
+      friendship.requesterID === userID || friendship.receiverID === userID;
+
+    if (!isConcerned) {
+      throw new ForbiddenException(
+        "Vous ne pouvez pas modifier une relation d'amitié qui ne vous concerne pas.",
+      );
     }
 
     return this.prisma.friendship.update({
@@ -178,7 +207,11 @@ private readonly include = {
     });
   }
 
-  async removeFriendship(requesterID: string, receiverID: string) {
+  async removeFriendship(
+    userID: string,
+    requesterID: string,
+    receiverID: string,
+  ) {
     const friendship = await this.prisma.friendship.findUnique({
       where: {
         requesterID_receiverID: {
@@ -189,7 +222,16 @@ private readonly include = {
     });
 
     if (!friendship) {
-      throw new NotFoundException('Friendship not found');
+      throw new NotFoundException("Relation d'amitié introuvable.");
+    }
+
+    const isConcerned =
+      friendship.requesterID === userID || friendship.receiverID === userID;
+
+    if (!isConcerned) {
+      throw new ForbiddenException(
+        "Vous ne pouvez pas supprimer une relation d'amitié qui ne vous concerne pas.",
+      );
     }
 
     return this.prisma.friendship.delete({

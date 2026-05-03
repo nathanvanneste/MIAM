@@ -1,11 +1,9 @@
 import {
-  ConflictException,
   Injectable,
   NotFoundException,
   ForbiddenException
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateShoppingListDto } from './dto/create-shopping-list.dto';
 import { UpdateShoppingListDto } from './dto/update-shopping-list.dto';
 import { CreateShoppingItemDto } from './dto/create-shopping-item.dto';
 import { UpdateShoppingItemDto } from './dto/update-shopping-item.dto';
@@ -25,47 +23,94 @@ export class ShoppingListsService {
     group: true,
   };
 
+  private async assertCanAccessShoppingList(userID: string, listID: number) {
+    const shoppingList = await this.prisma.shoppingList.findUnique({
+      where: { listID },
+      include: {
+        ...this.include,
+        group: {
+          include: {
+            members: true,
+          },
+        },
+      },
+    });
+
+    if (!shoppingList) {
+      throw new NotFoundException('Liste de courses introuvable.');
+    }
+
+    const isPersonalListOwner = shoppingList.userID === userID;
+
+    const isGroupMember =
+      shoppingList.group?.members.some((member) => member.userID === userID) ??
+      false;
+
+    if (!isPersonalListOwner && !isGroupMember) {
+      throw new ForbiddenException(
+        "Vous n'avez pas accès à cette liste de courses.",
+      );
+    }
+
+    return shoppingList;
+  }
+
+  private async assertCanAccessShoppingItem(userID: string, itemID: number) {
+    const item = await this.prisma.shoppingItem.findUnique({
+      where: { itemID },
+      select: {
+        itemID: true,
+        listID: true,
+      },
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Item with ID ${itemID} not found`);
+    }
+
+    await this.assertCanAccessShoppingList(userID, item.listID);
+
+    return item;
+  }
+
+  /*
   async create(userID: string, createShoppingListDto: CreateShoppingListDto) {
     return this.prisma.shoppingList.create({
       data: createShoppingListDto,
       include: this.include,
     });
   }
+    */
 
+  /*
   async findAll() {
     return this.prisma.shoppingList.findMany({
       include: this.include,
     });
   }
+    */
 
-  async findOne(listID: number) {
-    const list = await this.prisma.shoppingList.findUnique({
-      where: { listID },
-      include: this.include,
-    });
-
-    if (!list) {
-      throw new NotFoundException(
-        `Shopping list with ID ${listID} not found`,
-      );
-    }
-
-    return list;
+  async findOne(userID: string, listID: number) {
+    return this.assertCanAccessShoppingList(userID, listID);
   }
 
   async update(
+    userID: string,
     listID: number,
     updateShoppingListDto: UpdateShoppingListDto,
   ) {
-    await this.findOne(listID);
+    await this.assertCanAccessShoppingList(userID, listID);
 
     return this.prisma.shoppingList.update({
       where: { listID },
-      data: updateShoppingListDto,
+      data: {
+        name: updateShoppingListDto.name,
+      },
       include: this.include,
     });
   }
 
+  /*
   async remove(listID: number) {
     await this.findOne(listID);
 
@@ -73,9 +118,14 @@ export class ShoppingListsService {
       where: { listID },
     });
   }
+  */
 
-  async addItem(listID: number, createShoppingItemDto: CreateShoppingItemDto) {
-    await this.findOne(listID);
+  async addItem(
+    userID: string,
+    listID: number,
+    createShoppingItemDto: CreateShoppingItemDto,
+  ) {
+    await this.assertCanAccessShoppingList(userID, listID);
 
     return this.prisma.shoppingItem.create({
       data: {
@@ -94,20 +144,21 @@ export class ShoppingListsService {
   }
 
   async updateItem(
+    userID: string,
     itemID: number,
     updateShoppingItemDto: UpdateShoppingItemDto,
   ) {
-    const item = await this.prisma.shoppingItem.findUnique({
-      where: { itemID },
-    });
-
-    if (!item) {
-      throw new NotFoundException(`Item with ID ${itemID} not found`);
-    }
+    await this.assertCanAccessShoppingItem(userID, itemID);
 
     return this.prisma.shoppingItem.update({
       where: { itemID },
-      data: updateShoppingItemDto,
+      data: {
+        name: updateShoppingItemDto.name,
+        quantity: updateShoppingItemDto.quantity,
+        checked: updateShoppingItemDto.checked,
+        ingredientID: updateShoppingItemDto.ingredientID,
+        unitID: updateShoppingItemDto.unitID,
+      },
       include: {
         ingredient: true,
         unit: true,
@@ -115,23 +166,23 @@ export class ShoppingListsService {
     });
   }
 
-  async removeItem(itemID: number) {
-    const item = await this.prisma.shoppingItem.findUnique({
-      where: { itemID },
-    });
-
-    if (!item) {
-      throw new NotFoundException(`Item with ID ${itemID} not found`);
-    }
+  async removeItem(userID: string, itemID: number) {
+    await this.assertCanAccessShoppingItem(userID, itemID);
 
     return this.prisma.shoppingItem.delete({
       where: { itemID },
     });
   }
 
-  async toggleItem(itemID: number) {
+  async toggleItem(userID: string, itemID: number) {
+    await this.assertCanAccessShoppingItem(userID, itemID);
+
     const item = await this.prisma.shoppingItem.findUnique({
       where: { itemID },
+      select: {
+        itemID: true,
+        checked: true,
+      },
     });
 
     if (!item) {
@@ -143,6 +194,10 @@ export class ShoppingListsService {
       data: {
         checked: !item.checked,
       },
+      include: {
+        ingredient: true,
+        unit: true,
+      },
     });
   }
 
@@ -151,14 +206,7 @@ export class ShoppingListsService {
       where: {
         userID,
       },
-      include: {
-        items: {
-          include: {
-            ingredient: true,
-            unit: true,
-          },
-        },
-      },
+      include: this.include,
     });
 
     if (!shoppingList) {
@@ -172,35 +220,7 @@ export class ShoppingListsService {
 
   async importRecipe(userID: string, listID: number, recipeID: number) {
     // Récupère la liste ciblée avec son groupe pour vérifier les droits d'accès.
-    const shoppingList = await this.prisma.shoppingList.findUnique({
-      where: {
-        listID,
-      },
-      include: {
-        group: {
-          include: {
-            members: true,
-          },
-        },
-      },
-    });
-
-    if (!shoppingList) {
-      throw new NotFoundException('Liste de courses introuvable.');
-    }
-
-    // Autorise seulement le propriétaire de la liste ou un membre du groupe lié.
-    const isPersonalListOwner = shoppingList.userID === userID;
-
-    const isGroupMember =
-      shoppingList.group?.members.some((member) => member.userID === userID) ??
-      false;
-
-    if (!isPersonalListOwner && !isGroupMember) {
-      throw new ForbiddenException(
-        "Vous n'avez pas accès à cette liste de courses.",
-      );
-    }
+      await this.assertCanAccessShoppingList(userID, listID);
 
     // Récupère la recette avec ses ingrédients pour les convertir en items.
     const recipe = await this.prisma.recipe.findUnique({
@@ -222,7 +242,7 @@ export class ShoppingListsService {
     }
 
     if (recipe.ingredients.length === 0) {
-      return this.findOne(listID);
+      return this.findOne(userID, listID);
     }
 
     // Ajoute chaque ingrédient de la recette dans la liste de courses.
@@ -238,7 +258,7 @@ export class ShoppingListsService {
     });
 
     // Retourne la liste mise à jour pour rafraîchir le frontend.
-    return this.findOne(listID);
+    return this.findOne(userID, listID);
   }
 
 }

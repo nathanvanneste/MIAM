@@ -47,10 +47,6 @@ export class CreateRecipeDto {
   @IsInt()
   cookTime?: number;
 
-  @IsOptional()
-  @IsString()
-  photo?: string;
-
   @IsInt()
   portion!: number;
 

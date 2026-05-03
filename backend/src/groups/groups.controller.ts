@@ -33,58 +33,80 @@ export class GroupsController {
     return this.groupsService.findMine(req.user.userID);
   }
 
+  /*
   @Get()
   findAll() {
     return this.groupsService.findAll();
   }
+  */
 
   @Get(':groupID')
-  findOne(@Param('groupID', ParseIntPipe) groupID: number) {
-    return this.groupsService.findOne(groupID);
+  findOne(
+    @Req() req: AuthenticatedRequest,
+    @Param('groupID', ParseIntPipe) groupID: number,
+  ) {
+    return this.groupsService.findOne(req.user.userID, groupID);
   }
 
   @Patch(':groupID')
   update(
+    @Req() req: AuthenticatedRequest,
     @Param('groupID', ParseIntPipe) groupID: number,
     @Body() updateGroupDto: UpdateGroupDto,
   ) {
-    return this.groupsService.update(groupID, updateGroupDto);
+    return this.groupsService.update(req.user.userID, groupID, updateGroupDto);
   }
 
+  /*
   @Delete(':groupID')
-  remove(@Param('groupID', ParseIntPipe) groupID: number) {
-    return this.groupsService.remove(groupID);
+  remove(@Req() req: AuthenticatedRequest, @Param('groupID', ParseIntPipe) groupID: number) {
+    return this.groupsService.remove(req.user.userID, groupID);
   }
+    */
 
   @Post(':groupID/members')
   addMember(
+    @Req() req: AuthenticatedRequest,
     @Param('groupID', ParseIntPipe) groupID: number,
     @Body() addGroupMemberDto: AddGroupMemberDto,
   ) {
-    return this.groupsService.addMember(groupID, addGroupMemberDto);
+    return this.groupsService.addMember(req.user.userID, groupID, addGroupMemberDto);
   }
 
+  /*
   @Delete(':groupID/members/:userID')
   removeMember(
+    @Req() req: AuthenticatedRequest,
     @Param('groupID', ParseIntPipe) groupID: number,
     @Param('userID') userID: string,
   ) {
-    return this.groupsService.removeMember(groupID, userID);
+    return this.groupsService.removeMember(req.user.userID, groupID, userID);
   }
+  */
 
   @Post(':groupID/recipes')
   addRecipe(
+    @Req() req: AuthenticatedRequest,
     @Param('groupID', ParseIntPipe) groupID: number,
     @Body() addGroupRecipeDto: AddGroupRecipeDto,
   ) {
-    return this.groupsService.addRecipe(groupID, addGroupRecipeDto);
+    return this.groupsService.addRecipe(req.user.userID, groupID, addGroupRecipeDto);
   }
 
   @Delete(':groupID/recipes/:recipeID')
   removeRecipe(
+     @Req() req: AuthenticatedRequest,
     @Param('groupID', ParseIntPipe) groupID: number,
     @Param('recipeID', ParseIntPipe) recipeID: number,
   ) {
-    return this.groupsService.removeRecipe(groupID, recipeID);
+    return this.groupsService.removeRecipe(req.user.userID, groupID, recipeID);
+  }
+
+  @Delete(':groupID/members/me')
+  leaveGroup(
+    @Req() req: AuthenticatedRequest,
+    @Param('groupID', ParseIntPipe) groupID: number,
+  ) {
+    return this.groupsService.leaveGroup(req.user.userID, groupID);
   }
 }

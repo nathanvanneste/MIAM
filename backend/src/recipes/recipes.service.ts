@@ -15,6 +15,7 @@ import { UpdateStepDto } from './dto/update-step.dto';
 import { AddRecipeIngredientDto } from './dto/add-recipe-ingredient.dto';
 import { AddRecipeTagDto } from './dto/add-recipe-tag.dto';
 
+
 @Injectable()
 export class RecipesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -49,6 +50,55 @@ export class RecipesService {
     },
     groups: true,
   };
+
+  private async assertRecipeOwner(userID: string, recipeID: number) {
+    const recipe = await this.prisma.recipe.findUnique({
+      where: { recipeID },
+      select: {
+        recipeID: true,
+        creatorID: true,
+      },
+    });
+
+    if (!recipe) {
+      throw new NotFoundException(`Recipe with ID ${recipeID} not found`);
+    }
+
+    if (recipe.creatorID !== userID) {
+      throw new ForbiddenException(
+        'Vous ne pouvez modifier que vos propres recettes.',
+      );
+    }
+
+    return recipe;
+  }
+
+  private async assertStepOwner(userID: string, stepID: number) {
+    const step = await this.prisma.step.findUnique({
+      where: { stepID },
+      select: {
+        stepID: true,
+        recipeID: true,
+        recipe: {
+          select: {
+            creatorID: true,
+          },
+        },
+      },
+    });
+
+    if (!step) {
+      throw new NotFoundException(`Step with ID ${stepID} not found`);
+    }
+
+    if (step.recipe.creatorID !== userID) {
+      throw new ForbiddenException(
+        'Vous ne pouvez modifier que les étapes de vos propres recettes.',
+      );
+    }
+
+    return step;
+  }
 
   async create(userID: string, createRecipeDto: CreateRecipeDto) {
     const { steps, ingredients, tagIDs, ...recipeData } =
@@ -121,11 +171,14 @@ export class RecipesService {
     return recipe;
   }
 
-  async update(recipeID: number, updateRecipeDto: UpdateRecipeDto) {
-    await this.findOne(recipeID);
+  async update(
+    userID: string,
+    recipeID: number,
+    updateRecipeDto: UpdateRecipeDto,
+  ) {
+  await this.assertRecipeOwner(userID, recipeID);
 
-    const { steps, ingredients, tagIDs, ...recipeData } =
-      updateRecipeDto;
+    const { steps, ingredients, tagIDs, ...recipeData } = updateRecipeDto;
 
     return this.prisma.recipe.update({
       where: { recipeID },
@@ -172,16 +225,16 @@ export class RecipesService {
     });
   }
 
-  async remove(recipeID: number) {
-    await this.findOne(recipeID);
+  async remove(userID: string, recipeID: number) {
+    await this.assertRecipeOwner(userID, recipeID);
 
     return this.prisma.recipe.delete({
       where: { recipeID },
     });
   }
 
-  async addStep(recipeID: number, createStepDto: CreateStepDto) {
-    await this.findOne(recipeID);
+  async addStep(userID: string, recipeID: number, createStepDto: CreateStepDto) {
+    await this.assertRecipeOwner(userID, recipeID);
 
     return this.prisma.step.create({
       data: {
@@ -192,14 +245,8 @@ export class RecipesService {
     });
   }
 
-  async updateStep(stepID: number, updateStepDto: UpdateStepDto) {
-    const step = await this.prisma.step.findUnique({
-      where: { stepID },
-    });
-
-    if (!step) {
-      throw new NotFoundException(`Step with ID ${stepID} not found`);
-    }
+  async updateStep(userID: string, stepID: number, updateStepDto: UpdateStepDto) {
+    await this.assertStepOwner(userID, stepID);
 
     return this.prisma.step.update({
       where: { stepID },
@@ -207,14 +254,8 @@ export class RecipesService {
     });
   }
 
-  async removeStep(stepID: number) {
-    const step = await this.prisma.step.findUnique({
-      where: { stepID },
-    });
-
-    if (!step) {
-      throw new NotFoundException(`Step with ID ${stepID} not found`);
-    }
+  async removeStep(userID: string, stepID: number) {
+    await this.assertStepOwner(userID, stepID);
 
     return this.prisma.step.delete({
       where: { stepID },
@@ -222,10 +263,11 @@ export class RecipesService {
   }
 
   async addIngredient(
+    userID: string,
     recipeID: number,
     addRecipeIngredientDto: AddRecipeIngredientDto,
   ) {
-    await this.findOne(recipeID);
+    await this.assertRecipeOwner(userID, recipeID);
 
     const existingIngredient = await this.prisma.recipeIngredient.findUnique({
       where: {
@@ -254,7 +296,10 @@ export class RecipesService {
     });
   }
 
-  async removeIngredient(recipeID: number, ingredientID: number) {
+  async removeIngredient(userID: string, recipeID: number, ingredientID: number) {
+
+    await this.assertRecipeOwner(userID, recipeID);
+
     const existingIngredient = await this.prisma.recipeIngredient.findUnique({
       where: {
         recipeID_ingredientID: {
@@ -278,8 +323,8 @@ export class RecipesService {
     });
   }
 
-  async addTag(recipeID: number, addRecipeTagDto: AddRecipeTagDto) {
-    await this.findOne(recipeID);
+  async addTag(userID: string, recipeID: number, addRecipeTagDto: AddRecipeTagDto) {
+    await this.assertRecipeOwner(userID, recipeID);
 
     const existingTag = await this.prisma.recipeTag.findUnique({
       where: {
@@ -305,7 +350,9 @@ export class RecipesService {
     });
   }
 
-  async removeTag(recipeID: number, tagID: number) {
+  async removeTag(userID: string, recipeID: number, tagID: number) {
+    await this.assertRecipeOwner(userID, recipeID);
+    
     const existingTag = await this.prisma.recipeTag.findUnique({
       where: {
         recipeID_tagID: {
@@ -329,12 +376,25 @@ export class RecipesService {
     });
   }
 
-  async addReview(userID: string, createReviewDto: CreateReviewDto) {
+  async addReview(
+    userID: string,
+    recipeID: number,
+    createReviewDto: CreateReviewDto,
+  ) {
+    const recipe = await this.prisma.recipe.findUnique({
+      where: { recipeID },
+      select: { recipeID: true },
+    });
+
+    if (!recipe) {
+      throw new NotFoundException(`Recipe with ID ${recipeID} not found`);
+    }
+
     const existingReview = await this.prisma.review.findUnique({
       where: {
         userID_recipeID: {
           userID,
-          recipeID: createReviewDto.recipeID,
+          recipeID,
         },
       },
     });
@@ -347,7 +407,7 @@ export class RecipesService {
       data: {
         rating: createReviewDto.rating,
         comment: createReviewDto.comment,
-        recipeID: createReviewDto.recipeID,
+        recipeID,
         userID,
       },
       include: {
@@ -357,13 +417,23 @@ export class RecipesService {
     });
   }
 
-  async updateReview(reviewID: number, updateReviewDto: UpdateReviewDto) {
+  async updateReview(userID: string, reviewID: number, updateReviewDto: UpdateReviewDto) {
     const review = await this.prisma.review.findUnique({
       where: { reviewID },
+      select: {
+        reviewID: true,
+        userID: true,
+      },
     });
 
     if (!review) {
       throw new NotFoundException(`Review with ID ${reviewID} not found`);
+    }
+
+    if (review.userID !== userID) {
+      throw new ForbiddenException(
+        'Vous ne pouvez modifier que vos propres avis.',
+      );
     }
 
     return this.prisma.review.update({
@@ -372,13 +442,23 @@ export class RecipesService {
     });
   }
 
-  async removeReview(reviewID: number) {
+  async removeReview(userID: string, reviewID: number) {
     const review = await this.prisma.review.findUnique({
       where: { reviewID },
+      select: {
+        reviewID: true,
+        userID: true,
+      },
     });
 
     if (!review) {
       throw new NotFoundException(`Review with ID ${reviewID} not found`);
+    }
+
+    if (review.userID !== userID) {
+      throw new ForbiddenException(
+        'Vous ne pouvez supprimer que vos propres avis.',
+      );
     }
 
     return this.prisma.review.delete({
@@ -387,25 +467,7 @@ export class RecipesService {
   }
 
   async updateRecipePhoto(userID: string, recipeID: number, photo: string) {
-    const recipe = await this.prisma.recipe.findUnique({
-      where: {
-        recipeID,
-      },
-      select: {
-        recipeID: true,
-        creatorID: true,
-      },
-    });
-
-    if (!recipe) {
-      throw new NotFoundException('Recette introuvable.');
-    }
-
-    if (recipe.creatorID !== userID) {
-      throw new ForbiddenException(
-        "Vous ne pouvez modifier que les photos de vos propres recettes.",
-      );
-    }
+    await this.assertRecipeOwner(userID, recipeID);
 
     const expectedPrefix = `${userID}/${recipeID}/`;
 
@@ -422,6 +484,7 @@ export class RecipesService {
       data: {
         photo,
       },
+      include: this.recipeInclude,
     });
   }
 
