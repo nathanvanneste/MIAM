@@ -20,6 +20,7 @@ import { AddRecipeIngredientDto } from './dto/add-recipe-ingredient.dto';
 import { AddRecipeTagDto } from './dto/add-recipe-tag.dto';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
+import { UpdateRecipePhotoDto } from './dto/update-recipe-photo.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('recipes')
@@ -35,6 +36,12 @@ export class RecipesController {
   @Get()
   findAll() {
     return this.recipesService.findAll();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  findMine(@Req() req: AuthenticatedRequest) {
+    return this.recipesService.findMine(req.user.userID);
   }
 
   @Get(':recipeID')
@@ -135,5 +142,19 @@ export class RecipesController {
   @Delete('reviews/:reviewID')
   removeReview(@Param('reviewID', ParseIntPipe) reviewID: number) {
     return this.recipesService.removeReview(reviewID);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':recipeID/photo')
+  updateRecipePhoto(
+    @Req() req: AuthenticatedRequest,
+    @Param('recipeID', ParseIntPipe) recipeID: number,
+    @Body() dto: UpdateRecipePhotoDto,
+  ) {
+    return this.recipesService.updateRecipePhoto(
+      req.user.userID,
+      recipeID,
+      dto.photo,
+    );
   }
 }

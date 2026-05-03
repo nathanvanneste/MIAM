@@ -62,7 +62,7 @@ export default function RegisterScreen() {
                     {/* Avatar */}
                     <Text style={styles.avatarLabel}>Choisir un avatar (optionnel)</Text>
                     <View style={styles.avatarContainer}>
-                        <AvatarPicker onAvatarChange={(uri) => setForm({ ...form, avatarUri: uri })} />
+                        <AvatarPicker onAvatarChange={(uri) => setForm((prev) => ({ ...prev, avatarUri: uri }))} />
                     </View>
 
                     {/* Formulaire */}

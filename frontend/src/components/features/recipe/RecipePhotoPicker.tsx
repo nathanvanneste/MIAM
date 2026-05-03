@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { View, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import * as FileSystem from 'expo-file-system/legacy'
 import { Camera, ImagePlus } from 'lucide-react-native'
 import { Colors, BorderRadius } from '@/src/constants'
 
@@ -19,16 +20,27 @@ export default function RecipePhotoPicker({ onPhotoChange }: Props) {
         quality: 0.8,
       })
       : await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
       })
 
     if (!result.canceled) {
-      const uri = result.assets[0].uri
-      setPhotoUri(uri)
-      onPhotoChange(uri)
+      const pickedUri = result.assets[0].uri
+
+      const fileName =
+        pickedUri.split('/').pop() ?? `recipe-photo-${Date.now()}.jpg`
+
+      const stableUri = `${FileSystem.documentDirectory}${Date.now()}-${fileName}`
+
+      await FileSystem.copyAsync({
+        from: pickedUri,
+        to: stableUri,
+      })
+
+      setPhotoUri(stableUri)
+      onPhotoChange(stableUri)
     }
   }
 

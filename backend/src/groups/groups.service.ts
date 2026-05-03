@@ -13,7 +13,7 @@ import { AddGroupRecipeDto } from './dto/add-group-recipe.dto';
 export class GroupsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createGroupDto: CreateGroupDto) {
+  async create(userID: string, createGroupDto: CreateGroupDto) {
     const { memberIDs, ...groupData } = createGroupDto;
 
     return this.prisma.groups.create({
@@ -223,6 +223,40 @@ export class GroupsService {
         groupID_recipeID: {
           groupID,
           recipeID,
+        },
+      },
+    });
+  }
+
+  async findMine(userID: string) {
+    return this.prisma.groups.findMany({
+      where: {
+        members: {
+          some: {
+            userID,
+          },
+        },
+      },
+      include: {
+        members: {
+          include: {
+            user: true,
+          },
+        },
+        shoppingList: {
+          include: {
+            items: {
+              include: {
+                ingredient: true,
+                unit: true,
+              },
+            },
+          },
+        },
+        recipes: {
+          include: {
+            recipe: true,
+          },
         },
       },
     });

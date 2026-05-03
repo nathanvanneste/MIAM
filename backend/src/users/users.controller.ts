@@ -20,6 +20,7 @@ import { UpdateFriendshipStatusDto } from './dto/update-friendship-status.dto';
 import { SaveRecipeDto } from './dto/save-recipe.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateMyProfileDto } from './dto/create-my-profile.dto';
+import { UpdateMyAvatarDto } from './dto/update-my-avatar.dto';
 
 @Controller('users')
 export class UsersController {
@@ -113,5 +114,14 @@ export class UsersController {
     @Param('recipeID', ParseIntPipe) recipeID: number,
   ) {
     return this.usersService.unsaveRecipe(req.user.userID, recipeID);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me/avatar')
+  updateMyAvatar(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: UpdateMyAvatarDto,
+  ) {
+    return this.usersService.updateMyAvatar(req.user.userID, dto.avatar);
   }
 }

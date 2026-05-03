@@ -291,4 +291,21 @@ private readonly include = {
       },
     });
   }
+
+  async updateMyAvatar(userID: string, avatar: string) {
+    if (!avatar.startsWith(`${userID}/`)) {
+      throw new BadRequestException(
+        "Le chemin de l'avatar ne correspond pas à l'utilisateur connecté.",
+      );
+    }
+
+    return this.prisma.user.update({
+      where: {
+        userID,
+      },
+      data: {
+        avatar,
+      },
+    });
+  }
 }
