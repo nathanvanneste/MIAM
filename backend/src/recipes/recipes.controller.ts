@@ -49,73 +49,122 @@ export class RecipesController {
     return this.recipesService.findOne(recipeID);
   }
 
+    @UseGuards(JwtAuthGuard)
+    @Patch(':recipeID/photo')
+    updateRecipePhoto(
+      @Req() req: AuthenticatedRequest,
+      @Param('recipeID', ParseIntPipe) recipeID: number,
+      @Body() dto: UpdateRecipePhotoDto,
+    ) {
+      return this.recipesService.updateRecipePhoto(
+        req.user.userID,
+        recipeID,
+        dto.photo,
+      );
+    }
+
+  @UseGuards(JwtAuthGuard)
   @Patch(':recipeID')
   update(
+    @Req() req: AuthenticatedRequest,
     @Param('recipeID', ParseIntPipe) recipeID: number,
     @Body() updateRecipeDto: UpdateRecipeDto,
   ) {
-    return this.recipesService.update(recipeID, updateRecipeDto);
+    return this.recipesService.update(req.user.userID, recipeID, updateRecipeDto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(':recipeID')
-  remove(@Param('recipeID', ParseIntPipe) recipeID: number) {
-    return this.recipesService.remove(recipeID);
+  remove(
+    @Req() req: AuthenticatedRequest,
+    @Param('recipeID', ParseIntPipe) recipeID: number
+  ) {
+    return this.recipesService.remove(req.user.userID, recipeID);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(':recipeID/steps')
   addStep(
+    @Req() req: AuthenticatedRequest,
     @Param('recipeID', ParseIntPipe) recipeID: number,
     @Body() createStepDto: CreateStepDto,
   ) {
-    return this.recipesService.addStep(recipeID, createStepDto);
+    return this.recipesService.addStep(req.user.userID, recipeID, createStepDto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch('steps/:stepID')
   updateStep(
+    @Req() req: AuthenticatedRequest,
     @Param('stepID', ParseIntPipe) stepID: number,
     @Body() updateStepDto: UpdateStepDto,
   ) {
-    return this.recipesService.updateStep(stepID, updateStepDto);
+    return this.recipesService.updateStep(req.user.userID, stepID, updateStepDto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete('steps/:stepID')
-  removeStep(@Param('stepID', ParseIntPipe) stepID: number) {
-    return this.recipesService.removeStep(stepID);
+  removeStep(
+    @Req() req: AuthenticatedRequest,
+    @Param('stepID', ParseIntPipe) stepID: number
+  ) {
+    return this.recipesService.removeStep(req.user.userID, stepID);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(':recipeID/ingredients')
   addIngredient(
+    @Req() req: AuthenticatedRequest,
     @Param('recipeID', ParseIntPipe) recipeID: number,
-    @Body() addRecipeIngredientDto: AddRecipeIngredientDto,
+    @Body() dto: AddRecipeIngredientDto,
   ) {
     return this.recipesService.addIngredient(
+      req.user.userID,
       recipeID,
-      addRecipeIngredientDto,
+      dto,
     );
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(':recipeID/ingredients/:ingredientID')
   removeIngredient(
+    @Req() req: AuthenticatedRequest,
     @Param('recipeID', ParseIntPipe) recipeID: number,
     @Param('ingredientID', ParseIntPipe) ingredientID: number,
   ) {
-    return this.recipesService.removeIngredient(recipeID, ingredientID);
+    return this.recipesService.removeIngredient(
+      req.user.userID,
+      recipeID,
+      ingredientID,
+    );
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(':recipeID/tags')
   addTag(
+    @Req() req: AuthenticatedRequest,
     @Param('recipeID', ParseIntPipe) recipeID: number,
-    @Body() addRecipeTagDto: AddRecipeTagDto,
+    @Body() dto: AddRecipeTagDto,
   ) {
-    return this.recipesService.addTag(recipeID, addRecipeTagDto);
+    return this.recipesService.addTag(
+      req.user.userID,
+      recipeID,
+      dto,
+    );
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(':recipeID/tags/:tagID')
   removeTag(
+    @Req() req: AuthenticatedRequest,
     @Param('recipeID', ParseIntPipe) recipeID: number,
     @Param('tagID', ParseIntPipe) tagID: number,
   ) {
-    return this.recipesService.removeTag(recipeID, tagID);
+    return this.recipesService.removeTag(
+      req.user.userID,
+      recipeID,
+      tagID,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -125,36 +174,30 @@ export class RecipesController {
     @Param('recipeID', ParseIntPipe) recipeID: number,
     @Body() createReviewDto: CreateReviewDto,
   ) {
-    return this.recipesService.addReview(req.user.userID,{
-      ...createReviewDto,
+    return this.recipesService.addReview(
+      req.user.userID,
       recipeID,
-    });
-  }
-
-  @Patch('reviews/:reviewID')
-  updateReview(
-    @Param('reviewID', ParseIntPipe) reviewID: number,
-    @Body() updateReviewDto: UpdateReviewDto,
-  ) {
-    return this.recipesService.updateReview(reviewID, updateReviewDto);
-  }
-
-  @Delete('reviews/:reviewID')
-  removeReview(@Param('reviewID', ParseIntPipe) reviewID: number) {
-    return this.recipesService.removeReview(reviewID);
+      createReviewDto,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
-  @Patch(':recipeID/photo')
-  updateRecipePhoto(
+  @Patch('reviews/:reviewID')
+  updateReview(
     @Req() req: AuthenticatedRequest,
-    @Param('recipeID', ParseIntPipe) recipeID: number,
-    @Body() dto: UpdateRecipePhotoDto,
+    @Param('reviewID', ParseIntPipe) reviewID: number,
+    @Body() updateReviewDto: UpdateReviewDto,
   ) {
-    return this.recipesService.updateRecipePhoto(
-      req.user.userID,
-      recipeID,
-      dto.photo,
-    );
+    return this.recipesService.updateReview(req.user.userID, reviewID, updateReviewDto);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('reviews/:reviewID')
+  removeReview(  
+    @Req() req: AuthenticatedRequest,
+    @Param('reviewID', ParseIntPipe) reviewID: number
+  ) {
+    return this.recipesService.removeReview(req.user.userID, reviewID);
+  }
+
 }
