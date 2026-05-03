@@ -14,14 +14,14 @@ export const Colors = {
     error: '#E53935',
     success: '#4CAF50',
 
-    cardDark : '#F0CAA7',
-    cardLight : '#FFE6CF',
+    cardDark: '#F0CAA7',
+    cardLight: '#FFE6CF',
 
-    ligthGreen : '#E9FADB',
-    darkGreen : '#7FA87A',
+    ligthGreen: '#E9FADB',
+    darkGreen: '#7FA87A',
 
-    ligthBlue : '#E2F9F7',
-    darkBlue : '#448A91',
+    ligthBlue: '#E2F9F7',
+    darkBlue: '#448A91',
 
     primaryButton: "#FFAC40",
     primaryDarkButton: "#FF8A1F",

@@ -1,11 +1,31 @@
-import { API_URL } from '../config/api';
+import { apiFetch } from './api.service';
 
-export async function getUsers(): Promise<string> {
-  const response = await fetch(`${API_URL}/users`);
+export type User = {
+  userID: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  pseudo: string;
+  avatar?: string | null;
+};
 
-  if (!response.ok) {
-    throw new Error(`Erreur API: ${response.status}`);
-  }
+export async function getUsers(): Promise<User[]> {
+  return apiFetch('/users', {
+    method: 'GET',
+  });
+}
 
-  return await response.text();
+export async function getMe(): Promise<User> {
+  return apiFetch('/users/me', {
+    method: 'GET',
+  });
+}
+
+export async function updateMyAvatar(avatar: string): Promise<User> {
+  return apiFetch('/users/me/avatar', {
+    method: 'PATCH',
+    body: JSON.stringify({
+      avatar,
+    }),
+  });
 }

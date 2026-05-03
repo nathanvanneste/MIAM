@@ -1,10 +1,11 @@
 // src/components/ui/Recipe/RecipeCard.tsx
 // src/constants/colors.ts
-import { View, Text, Image, StyleSheet, useWindowDimensions } from "react-native";
+import { View, Text, Image, StyleSheet, useWindowDimensions, TouchableOpacity } from "react-native";
 import { Clock, Flame } from "lucide-react-native";
 import { Colors } from "../../../constants/colors";
 import { FontSize } from "../../../constants/typography";
 import type { Recipe } from "../../../types/recipe";
+import { router } from "expo-router";
 
 type RecipeCardProps = {
   recipe: Recipe;
@@ -19,7 +20,16 @@ export default function RecipeCard({ recipe, color, icon = "🍽️", cardWidth 
   const imageSize = Math.min(76, cardWidth * 0.48);
 
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() =>
+        router.push({
+          pathname: "/recipe/[recipeID]",
+          params: {
+            recipeID: recipe.recipeID.toString(),
+          },
+        })
+      }
       style={[
         styles.card,
         {
@@ -75,11 +85,11 @@ export default function RecipeCard({ recipe, color, icon = "🍽️", cardWidth 
           </View>
 
           <Text style={styles.dateText} numberOfLines={1}>
-            {recipe.dateCreation.toLocaleDateString("fr-FR")}
+            {new Date(recipe.createdAt).toLocaleDateString("fr-FR")}
           </Text>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 

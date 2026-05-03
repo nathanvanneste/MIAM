@@ -1,6 +1,8 @@
 import { supabase } from '../config/supabase';
 import { RegisterDTO } from '../types/user';
 import { apiFetch } from './api.service';
+import { uploadAvatar } from './storage.service';
+import { updateMyAvatar } from './users.service';
 
 export async function signIn(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -22,10 +24,11 @@ export async function register(form: RegisterDTO) {
   if (error) throw error;
 
   const session = data.session;
+  const user = data.user;
 
-  if (!session) {
+  if (!session|| !user) {
     throw new Error(
-      "Aucune session retournée après l'inscription. Vérifie que la confirmation email est bien désactivée dans Supabase.",
+      "Aucune session ou utilisateur retourné après l'inscription. Vérifie que la confirmation email est bien désactivée dans Supabase.",
     );
   }
 
@@ -37,6 +40,12 @@ export async function register(form: RegisterDTO) {
       pseudo: form.pseudo,
     }),
   });
+
+  if (form.avatarUri) {
+    const avatarPath = await uploadAvatar(form.avatarUri, user.id);
+    await updateMyAvatar(avatarPath);
+  }
+
 
   return data;
 }
