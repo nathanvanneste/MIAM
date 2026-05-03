@@ -1,18 +1,23 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from 'react-native'
-import { X, ChevronDown } from 'lucide-react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native'
+import { X, ChevronDown, Plus } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
 import { Ingredient } from '@/src/types/ingredient'
 import { searchIngredients } from '@/src/services/ingredients.service'
 import { UNITS } from '@/src/constants/units'
 import { CreateRecipeIngredientDTO } from '@/src/types/recipeIngredient'
 
-
 type SelectedIngredient = {
     ingredient: Ingredient
     quantity: number
     unitID: number
     unitType: string
+}
+
+type StagedIngredient = {
+    ingredient: Ingredient
+    quantity: string
+    unitIndex: number
 }
 
 type Props = {
@@ -22,80 +27,85 @@ type Props = {
 export default function IngredientSearch({ onChange }: Props) {
     const [search, setSearch] = useState('')
     const [suggestions, setSuggestions] = useState<Ingredient[]>([])
+    const [staged, setStaged] = useState<StagedIngredient | null>(null)
+    const [showStagedUnitPicker, setShowStagedUnitPicker] = useState(false)
     const [selected, setSelected] = useState<SelectedIngredient[]>([])
+    const [openUnitPicker, setOpenUnitPicker] = useState<number | null>(null)
 
-    const handleSearch = async (text: string) => {
-        setSearch(text)
-        if (text.length < 1) {
-            setSuggestions([])
-            return
-        }
-        try {
-            const results = await searchIngredients(text)
-            const filtered = results.filter(i => !selected.find(s => s.ingredient.ingredientID === i.ingredientID))
-            setSuggestions(filtered)
-        } catch (e) {
-            setSuggestions([])
-        }
-    }
-
-
-    const handleSelect = (ingredient: Ingredient) => {
-        const defaultUnit = UNITS.find(u => u.type === ingredient.unitDefault)
-        const newSelected: SelectedIngredient[] = [
-            ...selected,
-            {
-                ingredient,
-                quantity: 1,
-                unitID: defaultUnit?.unitID ?? 1,
-                unitType: defaultUnit?.type ?? ingredient.unitDefault,
-            }
-        ]
-        setSelected(newSelected)
-        onChange(newSelected.map(s => ({
+    const notify = (items: SelectedIngredient[]) => {
+        onChange(items.map(s => ({
             ingredientID: s.ingredient.ingredientID,
             quantity: s.quantity,
             unitID: s.unitID,
         })))
+    }
+
+    const handleSearch = async (text: string) => {
+        setSearch(text)
+        if (text.length < 1) { setSuggestions([]); return }
+        try {
+            const results = await searchIngredients(text)
+            const filtered = results.filter(i => !selected.find(s => s.ingredient.ingredientID === i.ingredientID))
+            setSuggestions(filtered)
+        } catch {
+            setSuggestions([])
+        }
+    }
+
+    // Tap suggestion → staging (pas encore ajouté)
+    const handleSelectSuggestion = (ingredient: Ingredient) => {
+        const defaultIdx = UNITS.findIndex(u => u.type === ingredient.unitDefault)
+        setStaged({
+            ingredient,
+            quantity: '1',
+            unitIndex: defaultIdx >= 0 ? defaultIdx : 0,
+        })
         setSearch('')
         setSuggestions([])
+        setShowStagedUnitPicker(false)
+    }
+
+    // Confirme l'ajout depuis le staging
+    const handleConfirmStaged = () => {
+        if (!staged) return
+        const unit = UNITS[staged.unitIndex]
+        const newSelected: SelectedIngredient[] = [
+            ...selected,
+            {
+                ingredient: staged.ingredient,
+                quantity: parseFloat(staged.quantity) || 1,
+                unitID: unit.unitID,
+                unitType: unit.type,
+            },
+        ]
+        setSelected(newSelected)
+        notify(newSelected)
+        setStaged(null)
+        setShowStagedUnitPicker(false)
     }
 
     const handleRemove = (id: number) => {
         const newSelected = selected.filter(s => s.ingredient.ingredientID !== id)
         setSelected(newSelected)
-        onChange(newSelected.map(s => ({
-            ingredientID: s.ingredient.ingredientID,
-            quantity: s.quantity,
-            unitID: s.unitID,
-        })))
+        notify(newSelected)
+        if (openUnitPicker === id) setOpenUnitPicker(null)
     }
 
-    const handleQuantityChange = (id: number, quantity: string) => {
+    const handleQuantityChange = (id: number, text: string) => {
         const newSelected = selected.map(s =>
-            s.ingredient.ingredientID === id ? { ...s, quantity: parseFloat(quantity) || 0 } : s
+            s.ingredient.ingredientID === id ? { ...s, quantity: parseFloat(text) || 0 } : s
         )
         setSelected(newSelected)
-        onChange(newSelected.map(s => ({
-            ingredientID: s.ingredient.ingredientID,
-            quantity: s.quantity,
-            unitID: s.unitID,
-        })))
+        notify(newSelected)
     }
 
-    const handleUnitChange = (id: number) => {
-        const newSelected = selected.map(s => {
-            if (s.ingredient.ingredientID !== id) return s
-            const currentIndex = UNITS.findIndex(u => u.unitID === s.unitID)
-            const nextUnit = UNITS[(currentIndex + 1) % UNITS.length]
-            return { ...s, unitID: nextUnit.unitID, unitType: nextUnit.type }
-        })
+    const handleUnitSelect = (id: number, unit: typeof UNITS[0]) => {
+        const newSelected = selected.map(s =>
+            s.ingredient.ingredientID === id ? { ...s, unitID: unit.unitID, unitType: unit.type } : s
+        )
         setSelected(newSelected)
-        onChange(newSelected.map(s => ({
-            ingredientID: s.ingredient.ingredientID,
-            quantity: s.quantity,
-            unitID: s.unitID,
-        })))
+        notify(newSelected)
+        setOpenUnitPicker(null)
     }
 
     return (
@@ -107,6 +117,7 @@ export default function IngredientSearch({ onChange }: Props) {
                 placeholderTextColor={Colors.textSecondary}
                 value={search}
                 onChangeText={handleSearch}
+                multiline={false}
             />
 
             {/* Suggestions */}
@@ -116,42 +127,112 @@ export default function IngredientSearch({ onChange }: Props) {
                         <TouchableOpacity
                             key={String(ingredient.ingredientID)}
                             style={styles.suggestion}
-                            onPress={() => handleSelect(ingredient)}
+                            onPress={() => handleSelectSuggestion(ingredient)}
                         >
                             <Text style={styles.suggestionText}>{ingredient.name}</Text>
-                            <Text style={styles.suggestionUnit}>{ingredient.unit}</Text>
+                            <Text style={styles.suggestionUnit}>{ingredient.unitDefault}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
             )}
 
-            {/* Ingrédients sélectionnés */}
-            {selected.map(item => (
-                <View key={item.ingredient.ingredientID} style={styles.selectedItem}>
-                    <Text style={styles.ingredientName}>{item.ingredient.name}</Text>
-
-                    <View style={styles.controls}>
+            {/* Staging — configurer qty/unité avant d'ajouter */}
+            {staged && (
+                <View style={styles.stagingCard}>
+                    {showStagedUnitPicker && (
+                        <View style={styles.unitChipsRow}>
+                            {UNITS.map((unit, idx) => (
+                                <TouchableOpacity
+                                    key={unit.unitID}
+                                    style={[styles.unitChip, staged.unitIndex === idx && styles.unitChipActive]}
+                                    onPress={() => {
+                                        setStaged(s => s ? { ...s, unitIndex: idx } : s)
+                                        setShowStagedUnitPicker(false)
+                                    }}
+                                >
+                                    <Text style={[styles.unitChipText, staged.unitIndex === idx && styles.unitChipTextActive]}>
+                                        {unit.type}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
+                    <View style={styles.stagingRow}>
+                        <Text style={styles.stagingName} numberOfLines={1}>{staged.ingredient.name}</Text>
                         <TextInput
-                            style={styles.quantityInput}
-                            value={String(item.quantity)}
+                            style={styles.qtyInput}
+                            value={staged.quantity}
                             keyboardType="numeric"
-                            onChangeText={(text) => handleQuantityChange(item.ingredient.ingredientID, text)}
+                            onChangeText={(text) => setStaged(s => s ? { ...s, quantity: text } : s)}
+                            selectTextOnFocus
+                            multiline={false}
                         />
-
                         <TouchableOpacity
-                            style={styles.unitButton}
-                            onPress={() => handleUnitChange(item.ingredient.ingredientID)}
+                            style={[styles.unitButton, showStagedUnitPicker && styles.unitButtonActive]}
+                            onPress={() => setShowStagedUnitPicker(v => !v)}
                         >
-                            <Text style={styles.unitText}>{item.unitType}</Text>
-                            <ChevronDown size={12} color={Colors.textSecondary} />
+                            <Text style={styles.unitText}>{UNITS[staged.unitIndex].type}</Text>
+                            <ChevronDown size={10} color={Colors.textSecondary} />
                         </TouchableOpacity>
-
-                        <TouchableOpacity onPress={() => handleRemove(item.ingredient.ingredientID)}>
-                            <X size={18} color={Colors.error} />
+                        <TouchableOpacity style={styles.addButton} onPress={handleConfirmStaged}>
+                            <Plus size={18} color={Colors.surface} />
                         </TouchableOpacity>
                     </View>
                 </View>
-            ))}
+            )}
+
+            {/* Ingrédients confirmés */}
+            {selected.map(item => {
+                const id = item.ingredient.ingredientID
+                const isPickerOpen = openUnitPicker === id
+                return (
+                    <View key={id} style={styles.selectedItem}>
+                        <View style={styles.itemRow}>
+                            <Text style={styles.ingredientName} numberOfLines={1}>{item.ingredient.name}</Text>
+                            <View style={styles.controls}>
+                                <TextInput
+                                    style={styles.quantityInput}
+                                    value={String(item.quantity)}
+                                    keyboardType="numeric"
+                                    onChangeText={(text) => handleQuantityChange(id, text)}
+                                    selectTextOnFocus
+                                    multiline={false}
+                                />
+                                <TouchableOpacity
+                                    style={[styles.unitButton, isPickerOpen && styles.unitButtonActive]}
+                                    onPress={() => setOpenUnitPicker(isPickerOpen ? null : id)}
+                                >
+                                    <Text style={styles.unitText}>{item.unitType}</Text>
+                                    <ChevronDown size={11} color={Colors.textSecondary} />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => handleRemove(id)}
+                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                >
+                                    <X size={18} color={Colors.error} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Dropdown unités sur les ingrédients déjà ajoutés */}
+                        {isPickerOpen && (
+                            <View style={styles.unitDropdown}>
+                                {UNITS.map(unit => (
+                                    <TouchableOpacity
+                                        key={unit.unitID}
+                                        style={[styles.unitOption, item.unitID === unit.unitID && styles.unitOptionActive]}
+                                        onPress={() => handleUnitSelect(id, unit)}
+                                    >
+                                        <Text style={[styles.unitOptionText, item.unitID === unit.unitID && styles.unitOptionTextActive]}>
+                                            {unit.type}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
+                    </View>
+                )
+            })}
         </View>
     )
 }
@@ -184,30 +265,97 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: Colors.border,
     },
-    suggestionText: {
+    suggestionText: { fontSize: FontSize.md, color: Colors.textPrimary },
+    suggestionUnit: { fontSize: FontSize.sm, color: Colors.textSecondary },
+
+    // Staging
+    stagingCard: {
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: Colors.primaryLight,
+        marginTop: Spacing.sm,
+        overflow: 'hidden',
+    },
+    unitChipsRow: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+        padding: Spacing.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
+        backgroundColor: Colors.background,
+    },
+    unitChip: {
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.xs,
+        borderRadius: BorderRadius.full,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        backgroundColor: Colors.surface,
+    },
+    unitChipActive: {
+        backgroundColor: Colors.primary,
+        borderColor: Colors.primary,
+    },
+    unitChipText: {
+        fontSize: FontSize.sm,
+        color: Colors.textSecondary,
+        fontWeight: FontWeight.medium,
+    },
+    unitChipTextActive: { color: Colors.surface },
+    stagingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        padding: Spacing.sm,
+    },
+    stagingName: {
+        flex: 1,
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.medium,
+        color: Colors.textPrimary,
+    },
+    qtyInput: {
+        width: 52,
+        height: ComponentSize.inputHeight,
+        backgroundColor: Colors.background,
+        borderRadius: BorderRadius.sm,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        textAlign: 'center',
         fontSize: FontSize.md,
         color: Colors.textPrimary,
     },
-    suggestionUnit: {
-        fontSize: FontSize.sm,
-        color: Colors.textSecondary,
-    },
-    selectedItem: {
-        flexDirection: 'row',
+    addButton: {
+        width: ComponentSize.inputHeight,
+        height: ComponentSize.inputHeight,
+        backgroundColor: Colors.primary,
+        borderRadius: BorderRadius.sm,
         alignItems: 'center',
-        justifyContent: 'space-between',
+        justifyContent: 'center',
+    },
+
+    // Ingrédients ajoutés
+    selectedItem: {
         backgroundColor: Colors.surface,
         borderRadius: BorderRadius.md,
         borderWidth: 1,
         borderColor: Colors.border,
+        marginTop: Spacing.sm,
+        overflow: 'hidden',
+    },
+    itemRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.sm,
-        marginTop: Spacing.sm,
     },
     ingredientName: {
         flex: 1,
         fontSize: FontSize.md,
         color: Colors.textPrimary,
+        marginRight: Spacing.sm,
     },
     controls: {
         flexDirection: 'row',
@@ -215,8 +363,8 @@ const styles = StyleSheet.create({
         gap: Spacing.sm,
     },
     quantityInput: {
-        width: 50,
-        height: 34,
+        width: 52,
+        height: 36,
         backgroundColor: Colors.background,
         borderRadius: BorderRadius.sm,
         borderWidth: 1,
@@ -234,10 +382,30 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: Colors.border,
         paddingHorizontal: Spacing.sm,
-        height: 34,
+        height: 36,
+        minWidth: 52,
+        justifyContent: 'center',
     },
-    unitText: {
+    unitButtonActive: { borderColor: Colors.primary },
+    unitText: { fontSize: FontSize.sm, color: Colors.textSecondary },
+    unitDropdown: {
+        flexDirection: 'row',
+        borderTopWidth: 1,
+        borderTopColor: Colors.border,
+        backgroundColor: Colors.background,
+    },
+    unitOption: {
+        flex: 1,
+        alignItems: 'center',
+        paddingVertical: Spacing.sm,
+        borderRightWidth: 1,
+        borderRightColor: Colors.border,
+    },
+    unitOptionActive: { backgroundColor: Colors.primary },
+    unitOptionText: {
         fontSize: FontSize.sm,
         color: Colors.textSecondary,
+        fontWeight: FontWeight.medium,
     },
+    unitOptionTextActive: { color: Colors.surface },
 })

@@ -1,12 +1,27 @@
 import { apiFetch } from '@/src/config/api'
 import { supabase } from '@/src/config/supabase';
-import { CreateRecipeDTO, Recipe  } from '../types/recipe'
+import { CreateRecipeDTO, Recipe } from '../types/recipe'
+import { Ingredient } from '../types/ingredient'
 import { uploadRecipePhoto } from './storage.service';
 
-export const getMyRecipes = async (): Promise<Recipe[]> => {
-  return await apiFetch('/recipes/me', {
-    method: 'GET',
-  });
+export type RecipeIngredientDetail = {
+  ingredientID: number
+  quantity: number
+  unitID: number | null
+  ingredient: Ingredient
+  unit: { unitID: number; type: string } | null
+}
+
+export type RecipeDetail = Omit<Recipe, 'recipeIngredients'> & {
+  ingredients: RecipeIngredientDetail[]
+}
+
+export const getMyRecipes = async (): Promise<RecipeDetail[]> => {
+  return await apiFetch('/recipes/me', { method: 'GET' });
+};
+
+export const getAllRecipes = async (): Promise<RecipeDetail[]> => {
+  return await apiFetch('/recipes', { method: 'GET' });
 };
 
 export const createRecipe = async (form: CreateRecipeDTO): Promise<Recipe> => {

@@ -1,9 +1,15 @@
 import { apiFetch } from '@/src/config/api'
 import { ShoppingList, CreateShoppingItemDTO, UpdateShoppingItemDTO } from '@/src/types/shoppingList'
 
-// À brancher quand le back aura l'endpoint
 export const getMyList = async (): Promise<ShoppingList> => {
     return await apiFetch('/shopping-lists/me')
+}
+
+export const createList = async (name: string, userID: string): Promise<ShoppingList> => {
+    return await apiFetch('/shopping-lists', {
+        method: 'POST',
+        body: JSON.stringify({ name, userID }),
+    })
 }
 
 // À brancher quand le back aura l'endpoint

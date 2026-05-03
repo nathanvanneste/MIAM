@@ -11,8 +11,10 @@ export type Recipe = {
     photo?: string | null;
     portion: number;
     description?: string | null;
-    recipeIngredients: RecipeIngredient[]
-
+    price?: number | null;
+    nutritionalScore?: number | null;
+    creatorID: string;
+    recipeIngredients: RecipeIngredient[];
 };
 
 export type CreateRecipeDTO = {

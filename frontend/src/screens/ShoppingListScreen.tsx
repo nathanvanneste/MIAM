@@ -1,70 +1,91 @@
 import { useState, useEffect } from 'react'
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal, KeyboardAvoidingView, Platform } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Plus, Trash2, Check } from 'lucide-react-native'
-import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
+import { Trash2, Check, ChevronDown, ChevronUp, BookOpen } from 'lucide-react-native'
+import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '@/src/constants'
 import { ShoppingList, ShoppingItem } from '@/src/types/shoppingList'
-import { toggleItem, removeItem, addItem } from '@/src/services/shoppingList.service'
+import { toggleItem, removeItem, addItem, updateItem, getMyList, getMyGroups } from '@/src/services/shoppingList.service'
 import AddShoppingItem from '@/src/components/features/shopping/AddShoppingItem'
-
-// Mock en attendant les endpoints back
-const MOCK_LISTS: ShoppingList[] = [
-    {
-        listID: 1,
-        name: 'Ma liste',
-        userID: 'me',
-        items: [
-            { itemID: 1, name: 'Farine', quantity: 500, checked: false, listID: 1 },
-            { itemID: 2, name: 'Oeufs', quantity: 6, checked: true, listID: 1 },
-        ]
-    },
-    {
-        listID: 2,
-        name: 'Coloc 🏠',
-        groupID: 1,
-        items: [
-            { itemID: 3, name: 'Lait', quantity: 2, checked: false, listID: 2 },
-        ]
-    },
-]
+import ImportRecipeModal from '@/src/components/features/shopping/ImportRecipeModal'
 
 export default function ShoppingListScreen() {
-    const [lists, setLists] = useState<ShoppingList[]>(MOCK_LISTS)
-    const [selectedListID, setSelectedListID] = useState<number>(MOCK_LISTS[0].listID)
-    const [newItemName, setNewItemName] = useState('')
-    const [newItemQuantity, setNewItemQuantity] = useState('')
+    const [lists, setLists] = useState<ShoppingList[]>([])
+    const [loading, setLoading] = useState(true)
+    const [selectedListID, setSelectedListID] = useState<number>(0)
+    const [showImportModal, setShowImportModal] = useState(false)
+    const [showListPicker, setShowListPicker] = useState(false)
+    const [checkedExpanded, setCheckedExpanded] = useState(false)
 
-    const currentList = lists.find(l => l.listID === selectedListID)!
+    useEffect(() => {
+        const fetchLists = async () => {
+            try {
+                const [myListResult, myGroupsResult] = await Promise.allSettled([
+                    getMyList(),
+                    getMyGroups(),
+                ])
+
+                const allLists: ShoppingList[] = []
+
+                if (myListResult.status === 'fulfilled') {
+                    allLists.push(myListResult.value)
+                }
+                if (myGroupsResult.status === 'fulfilled') {
+                    const groupLists = myGroupsResult.value
+                        .filter((g: any) => g.shoppingList)
+                        .map((g: any) => ({ ...g.shoppingList, name: g.name }))
+                    allLists.push(...groupLists)
+                }
+
+                setLists(allLists)
+                if (allLists.length > 0) setSelectedListID(allLists[0].listID)
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchLists()
+    }, [])
+
+    if (loading) return (
+        <SafeAreaView style={styles.container}>
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: Colors.textSecondary }}>Chargement...</Text>
+            </View>
+        </SafeAreaView>
+    )
+
+    if (lists.length === 0) return (
+        <SafeAreaView style={styles.container}>
+            <View style={styles.header}>
+                <Text style={styles.title}>Courses</Text>
+            </View>
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: Colors.textSecondary }}>Aucune liste de courses disponible.</Text>
+            </View>
+        </SafeAreaView>
+    )
+
+    const currentList = lists.find(l => l.listID === selectedListID)
+    if (!currentList) return null
 
     const handleToggle = async (item: ShoppingItem) => {
-        // Optimistic update
         setLists(prev => prev.map(list =>
             list.listID === selectedListID
-                ? {
-                    ...list, items: list.items.map(i =>
-                        i.itemID === item.itemID ? { ...i, checked: !i.checked } : i
-                    )
-                }
+                ? { ...list, items: list.items.map(i => i.itemID === item.itemID ? { ...i, checked: !i.checked } : i) }
                 : list
         ))
         try {
             await toggleItem(item.itemID)
-        } catch (e) {
-            // Rollback
+        } catch {
             setLists(prev => prev.map(list =>
                 list.listID === selectedListID
-                    ? {
-                        ...list, items: list.items.map(i =>
-                            i.itemID === item.itemID ? { ...i, checked: item.checked } : i
-                        )
-                    }
+                    ? { ...list, items: list.items.map(i => i.itemID === item.itemID ? { ...i, checked: item.checked } : i) }
                     : list
             ))
         }
     }
 
     const handleRemove = async (itemID: number) => {
-        const previousLists = lists
+        const previous = lists
         setLists(prev => prev.map(list =>
             list.listID === selectedListID
                 ? { ...list, items: list.items.filter(i => i.itemID !== itemID) }
@@ -72,37 +93,82 @@ export default function ShoppingListScreen() {
         ))
         try {
             await removeItem(itemID)
-        } catch (e) {
-            setLists(previousLists)
+        } catch {
+            setLists(previous)
         }
     }
 
     const handleAdd = async (newItem: Omit<ShoppingItem, 'itemID'>) => {
-        const tempID = Date.now()
-        const tempItem = { ...newItem, itemID: tempID }
-        const previousLists = lists
+        const existing = currentList.items.find(i =>
+            (newItem.ingredientID && i.ingredientID === newItem.ingredientID) ||
+            i.name.toLowerCase() === newItem.name.toLowerCase()
+        )
 
+        if (existing) {
+            const mergedQty = (existing.quantity ?? 0) + (newItem.quantity ?? 0) || undefined
+            setLists(prev => prev.map(list =>
+                list.listID === selectedListID
+                    ? { ...list, items: list.items.map(i => i.itemID === existing.itemID ? { ...i, quantity: mergedQty } : i) }
+                    : list
+            ))
+            try {
+                await updateItem(existing.itemID, { quantity: mergedQty })
+            } catch {
+                setLists(prev => prev.map(list =>
+                    list.listID === selectedListID
+                        ? { ...list, items: list.items.map(i => i.itemID === existing.itemID ? existing : i) }
+                        : list
+                ))
+            }
+            return
+        }
+
+        const tempID = Date.now()
+        const previous = lists
         setLists(prev => prev.map(list =>
             list.listID === selectedListID
-                ? { ...list, items: [...list.items, tempItem] }
+                ? { ...list, items: [...list.items, { ...newItem, itemID: tempID }] }
                 : list
         ))
-
         try {
-            await addItem(selectedListID, {
+            const created = await addItem(selectedListID, {
                 name: newItem.name,
                 quantity: newItem.quantity,
                 listID: selectedListID,
                 ingredientID: newItem.ingredientID,
                 unitID: newItem.unitID,
             })
-        } catch (e) {
-            setLists(previousLists)
+            setLists(prev => prev.map(list =>
+                list.listID === selectedListID
+                    ? { ...list, items: list.items.map(i => i.itemID === tempID ? created : i) }
+                    : list
+            ))
+        } catch {
+            setLists(previous)
         }
     }
 
-    const uncheckedItems = currentList.items.filter(i => !i.checked)
-    const checkedItems = currentList.items.filter(i => i.checked)
+    const handleClearChecked = async () => {
+        const checkedItems = currentList.items.filter(i => i.checked)
+        const previous = lists
+        setLists(prev => prev.map(list =>
+            list.listID === selectedListID
+                ? { ...list, items: list.items.filter(i => !i.checked) }
+                : list
+        ))
+        try {
+            await Promise.all(checkedItems.map(i => removeItem(i.itemID)))
+        } catch {
+            setLists(previous)
+        }
+    }
+
+    const handleImportDone = (updatedList: ShoppingList) => {
+        setLists(prev => prev.map(l => l.listID === updatedList.listID ? updatedList : l))
+    }
+
+    const unchecked = currentList.items.filter(i => !i.checked)
+    const checked = currentList.items.filter(i => i.checked)
 
     return (
         <SafeAreaView style={styles.container}>
@@ -110,83 +176,167 @@ export default function ShoppingListScreen() {
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.title}>Courses</Text>
-                <Text style={styles.itemCount}>{uncheckedItems.length} restant{uncheckedItems.length > 1 ? 's' : ''}</Text>
-            </View>
-
-            {/* Selector */}
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.selectorContainer}
-            >
-                {lists.map(list => (
-                    <TouchableOpacity
-                        key={list.listID}
-                        style={[styles.selectorChip, selectedListID === list.listID && styles.selectorChipActive]}
-                        onPress={() => setSelectedListID(list.listID)}
-                    >
-                        <Text style={[styles.selectorText, selectedListID === list.listID && styles.selectorTextActive]}>
-                            {list.name}
+                {unchecked.length > 0 && (
+                    <View style={styles.countBadge}>
+                        <Text style={styles.countText}>
+                            {unchecked.length} restant{unchecked.length > 1 ? 's' : ''}
                         </Text>
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
-
-            {/* Liste */}
-            <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-
-                {/* Items non cochés */}
-                {uncheckedItems.map(item => (
-                    <View key={item.itemID} style={styles.item}>
-                        <TouchableOpacity style={styles.checkbox} onPress={() => handleToggle(item)}>
-                            <View style={styles.checkboxInner} />
-                        </TouchableOpacity>
-                        <Text style={styles.itemName}>{item.name}</Text>
-                        {item.quantity && <Text style={styles.itemQty}>{item.quantity}</Text>}
-                        <TouchableOpacity onPress={() => handleRemove(item.itemID)}>
-                            <Trash2 size={16} color={Colors.textSecondary} />
-                        </TouchableOpacity>
-                    </View>
-                ))}
-
-                {/* Items cochés */}
-                {checkedItems.length > 0 && (
-                    <View style={styles.checkedSection}>
-                        <Text style={styles.checkedLabel}>Déjà dans le panier ({checkedItems.length})</Text>
-                        {checkedItems.map(item => (
-                            <View key={item.itemID} style={[styles.item, styles.itemChecked]}>
-                                <TouchableOpacity style={[styles.checkbox, styles.checkboxChecked]} onPress={() => handleToggle(item)}>
-                                    <Check size={12} color={Colors.surface} />
-                                </TouchableOpacity>
-                                <Text style={[styles.itemName, styles.itemNameChecked]}>{item.name}</Text>
-                                {item.quantity && <Text style={styles.itemQty}>{item.quantity}</Text>}
-                                <TouchableOpacity onPress={() => handleRemove(item.itemID)}>
-                                    <Trash2 size={16} color={Colors.textSecondary} />
-                                </TouchableOpacity>
-                            </View>
-                        ))}
                     </View>
                 )}
-            </ScrollView>
-
-            {/* Ajouter un item */}
-            <View style={styles.addContainer}>
-                <AddShoppingItem listID={selectedListID} onAdd={handleAdd} />
             </View>
 
+            {/* Sélecteur de liste compact — seulement si plusieurs listes */}
+            {lists.length > 1 && (
+                <>
+                    <TouchableOpacity
+                        style={styles.listSelector}
+                        onPress={() => setShowListPicker(true)}
+                    >
+                        <Text style={styles.listSelectorText}>{currentList.name}</Text>
+                        <ChevronDown size={14} color={Colors.textSecondary} />
+                    </TouchableOpacity>
+
+                    <Modal
+                        visible={showListPicker}
+                        transparent
+                        animationType="fade"
+                        onRequestClose={() => setShowListPicker(false)}
+                    >
+                        <TouchableOpacity
+                            style={styles.listPickerOverlay}
+                            activeOpacity={1}
+                            onPress={() => setShowListPicker(false)}
+                        >
+                            <View style={styles.listPickerCard}>
+                                <Text style={styles.listPickerTitle}>Choisir une liste</Text>
+                                {lists.map(list => (
+                                    <TouchableOpacity
+                                        key={list.listID}
+                                        style={[styles.listPickerItem, list.listID === selectedListID && styles.listPickerItemActive]}
+                                        onPress={() => { setSelectedListID(list.listID); setShowListPicker(false) }}
+                                    >
+                                        <Text style={[styles.listPickerText, list.listID === selectedListID && styles.listPickerTextActive]}>
+                                            {list.name}
+                                        </Text>
+                                        {list.listID === selectedListID && (
+                                            <Check size={16} color={Colors.primaryLight} />
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </TouchableOpacity>
+                    </Modal>
+                </>
+            )}
+
+            {/* Importer une recette */}
+            <TouchableOpacity style={styles.importBanner} onPress={() => setShowImportModal(true)}>
+                <BookOpen size={18} color={Colors.primaryDarkButton} />
+                <Text style={styles.importBannerText}>Importer une recette</Text>
+                <View style={{ flex: 1 }} />
+                <ChevronDown size={16} color={Colors.primaryDarkButton} style={{ transform: [{ rotate: '-90deg' }] }} />
+            </TouchableOpacity>
+
+            {/* Contenu + barre d'ajout — keyboard-aware */}
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+                <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+
+                    {unchecked.length === 0 && checked.length === 0 && (
+                        <Text style={styles.emptyList}>La liste est vide.</Text>
+                    )}
+
+                    {unchecked.map(item => (
+                        <View key={item.itemID} style={styles.item}>
+                            <TouchableOpacity style={styles.checkbox} onPress={() => handleToggle(item)} />
+                            <Text style={styles.itemName}>{item.name}</Text>
+                            {item.quantity != null && (
+                                <View style={styles.qtyBadge}>
+                                    <Text style={styles.qtyText}>
+                                        {item.quantity}{item.unit ? ` ${item.unit.type}` : ''}
+                                    </Text>
+                                </View>
+                            )}
+                            <TouchableOpacity
+                                onPress={() => handleRemove(item.itemID)}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                                <Trash2 size={16} color={Colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                    ))}
+
+                    {checked.length > 0 && (
+                        <View style={styles.checkedSection}>
+                            <View style={styles.checkedHeader}>
+                                <TouchableOpacity
+                                    style={styles.checkedHeaderLeft}
+                                    onPress={() => setCheckedExpanded(v => !v)}
+                                >
+                                    <Text style={styles.checkedLabel}>Dans le panier ({checked.length})</Text>
+                                    {checkedExpanded
+                                        ? <ChevronUp size={16} color={Colors.textSecondary} />
+                                        : <ChevronDown size={16} color={Colors.textSecondary} />
+                                    }
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={handleClearChecked}>
+                                    <Text style={styles.clearBtn}>Vider</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {checkedExpanded && checked.map(item => (
+                                <View key={item.itemID} style={[styles.item, styles.itemChecked]}>
+                                    <TouchableOpacity
+                                        style={[styles.checkbox, styles.checkboxChecked]}
+                                        onPress={() => handleToggle(item)}
+                                    >
+                                        <Check size={12} color={Colors.surface} />
+                                    </TouchableOpacity>
+                                    <Text style={[styles.itemName, styles.itemNameChecked]}>{item.name}</Text>
+                                    {item.quantity != null && (
+                                        <View style={[styles.qtyBadge, styles.qtyBadgeChecked]}>
+                                            <Text style={styles.qtyText}>
+                                                {item.quantity}{item.unit ? ` ${item.unit.type}` : ''}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    <TouchableOpacity
+                                        onPress={() => handleRemove(item.itemID)}
+                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    >
+                                        <Trash2 size={16} color={Colors.textSecondary} />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                </ScrollView>
+
+                {/* Barre d'ajout */}
+                <View style={styles.addBar}>
+                    <AddShoppingItem listID={selectedListID} onAdd={handleAdd} />
+                </View>
+            </KeyboardAvoidingView>
+
+            <ImportRecipeModal
+                visible={showImportModal}
+                listID={selectedListID}
+                currentItems={currentList.items}
+                onClose={() => setShowImportModal(false)}
+                onImportDone={handleImportDone}
+            />
         </SafeAreaView>
     )
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: Colors.background,
-    },
+    container: { flex: 1, backgroundColor: Colors.background },
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-end',
+        alignItems: 'center',
+        gap: Spacing.md,
         paddingHorizontal: Spacing.xl,
         paddingTop: Spacing.lg,
         paddingBottom: Spacing.md,
@@ -196,129 +346,183 @@ const styles = StyleSheet.create({
         fontWeight: FontWeight.bold,
         color: Colors.primary,
     },
-    itemCount: {
-        fontSize: FontSize.sm,
-        color: Colors.textSecondary,
-        marginBottom: 4,
-    },
-    selectorContainer: {
-        paddingHorizontal: Spacing.xl,
-        paddingBottom: Spacing.md,
-        gap: Spacing.sm,
-    },
-    selectorChip: {
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.xs,
+    countBadge: {
+        backgroundColor: Colors.cardLight,
         borderRadius: BorderRadius.full,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 4,
+    },
+    countText: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.medium,
+        color: Colors.primaryLight,
+    },
+    // Sélecteur de liste compact
+    listSelector: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: Spacing.xs,
+        marginHorizontal: Spacing.xl,
+        marginBottom: Spacing.md,
         backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.full,
         borderWidth: 1,
         borderColor: Colors.border,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 6,
     },
-    selectorChipActive: {
-        backgroundColor: Colors.primary,
-        borderColor: Colors.primary,
-    },
-    selectorText: {
+    listSelectorText: {
         fontSize: FontSize.sm,
         fontWeight: FontWeight.medium,
+        color: Colors.textPrimary,
+    },
+    listPickerOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        justifyContent: 'center',
+        paddingHorizontal: Spacing.xl,
+    },
+    listPickerCard: {
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.lg,
+        overflow: 'hidden',
+    },
+    listPickerTitle: {
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.semibold,
         color: Colors.textSecondary,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
     },
-    selectorTextActive: {
-        color: Colors.surface,
+    listPickerItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
     },
+    listPickerItemActive: {
+        backgroundColor: '#FFF5F5',
+    },
+    listPickerText: {
+        fontSize: FontSize.md,
+        color: Colors.textPrimary,
+    },
+    listPickerTextActive: {
+        color: Colors.primaryLight,
+        fontWeight: FontWeight.semibold,
+    },
+    // Import banner
+    importBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        marginHorizontal: Spacing.xl,
+        marginBottom: Spacing.md,
+        backgroundColor: '#FFF5E0',
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: Colors.primaryButton,
+        paddingHorizontal: Spacing.md,
+        paddingVertical: 12,
+    },
+    importBannerText: {
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.medium,
+        color: Colors.primaryDarkButton,
+    },
+    // Liste
     list: {
         paddingHorizontal: Spacing.xl,
-        paddingBottom: Spacing.xxxl,
+        paddingBottom: Spacing.md,
+    },
+    emptyList: {
+        textAlign: 'center',
+        color: Colors.textSecondary,
+        marginTop: Spacing.xl,
     },
     item: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: Spacing.md,
+        backgroundColor: Colors.surface,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        paddingHorizontal: Spacing.md,
         paddingVertical: Spacing.md,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
+        marginBottom: Spacing.sm,
     },
-    itemChecked: {
-        opacity: 0.5,
-    },
+    itemChecked: { opacity: 0.55 },
     checkbox: {
         width: 24,
         height: 24,
         borderRadius: 12,
         borderWidth: 2,
         borderColor: Colors.border,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    checkboxInner: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
     },
     checkboxChecked: {
-        backgroundColor: Colors.primary,
-        borderColor: Colors.primary,
+        backgroundColor: Colors.primaryLight,
+        borderColor: Colors.primaryLight,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     itemName: {
         flex: 1,
         fontSize: FontSize.md,
+        fontWeight: FontWeight.medium,
         color: Colors.textPrimary,
     },
     itemNameChecked: {
         textDecorationLine: 'line-through',
         color: Colors.textSecondary,
+        fontWeight: FontWeight.regular,
     },
-    itemQty: {
-        fontSize: FontSize.sm,
-        color: Colors.textSecondary,
+    qtyBadge: {
+        backgroundColor: Colors.cardLight,
+        borderRadius: BorderRadius.full,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 3,
     },
-    checkedSection: {
-        marginTop: Spacing.lg,
+    qtyBadgeChecked: { backgroundColor: Colors.border },
+    qtyText: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.medium,
+        color: Colors.primaryMuted,
+    },
+    checkedSection: { marginTop: Spacing.sm },
+    checkedHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: Spacing.sm,
+        marginBottom: Spacing.xs,
+    },
+    checkedHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.xs,
     },
     checkedLabel: {
         fontSize: FontSize.sm,
         fontWeight: FontWeight.medium,
         color: Colors.textSecondary,
-        marginBottom: Spacing.sm,
     },
-    addContainer: {
-        flexDirection: 'row',
-        gap: Spacing.sm,
+    clearBtn: {
+        fontSize: FontSize.sm,
+        fontWeight: FontWeight.medium,
+        color: Colors.error,
+    },
+    addBar: {
         paddingHorizontal: Spacing.xl,
         paddingVertical: Spacing.md,
         borderTopWidth: 1,
         borderTopColor: Colors.border,
         backgroundColor: Colors.background,
-    },
-    addInput: {
-        flex: 1,
-        height: ComponentSize.inputHeight,
-        backgroundColor: Colors.surface,
-        borderRadius: BorderRadius.md,
-        borderWidth: 1,
-        borderColor: Colors.border,
-        paddingHorizontal: Spacing.md,
-        fontSize: FontSize.md,
-        color: Colors.textPrimary,
-    },
-    addQtyInput: {
-        width: 60,
-        height: ComponentSize.inputHeight,
-        backgroundColor: Colors.surface,
-        borderRadius: BorderRadius.md,
-        borderWidth: 1,
-        borderColor: Colors.border,
-        paddingHorizontal: Spacing.sm,
-        fontSize: FontSize.md,
-        color: Colors.textPrimary,
-        textAlign: 'center',
-    },
-    addButton: {
-        width: ComponentSize.inputHeight,
-        height: ComponentSize.inputHeight,
-        backgroundColor: Colors.primary,
-        borderRadius: BorderRadius.md,
-        alignItems: 'center',
-        justifyContent: 'center',
     },
 })

@@ -1,10 +1,9 @@
 import { Ingredient } from "./ingredient";
 
 export type RecipeIngredient = {
-    ingredient: Ingredient
-    unit: string;
+    ingredient: Ingredient;
+    unit: { unitID: number; type: string } | null;
     quantity: number;
-
 };
 
 export type CreateRecipeIngredientDTO = {

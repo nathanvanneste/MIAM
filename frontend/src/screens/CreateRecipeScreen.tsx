@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert, Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { KeyboardAvoidingView } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
+import * as FileSystem from 'expo-file-system/legacy'
+import { ImagePlus, Clock, Users } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
 import { CreateRecipeDTO } from '@/src/types/recipe'
-import RecipePhotoPicker from '@/src/components/features/recipe/RecipePhotoPicker'
 import PortionCounter from '@/src/components/features/recipe/PortionCounter'
 import IngredientSearch from '@/src/components/features/recipe/IngredientSearch'
 import StepList from '@/src/components/features/recipe/StepList'
@@ -14,8 +16,8 @@ import { router } from 'expo-router'
 function SectionTitle({ number, title }: { number: string; title: string }) {
     return (
         <View style={styles.sectionHeader}>
-            <View style={styles.sectionNumber}>
-                <Text style={styles.sectionNumberText}>{number}</Text>
+            <View style={styles.sectionBadge}>
+                <Text style={styles.sectionBadgeText}>{number}</Text>
             </View>
             <Text style={styles.sectionTitle}>{title}</Text>
             <View style={styles.sectionLine} />
@@ -35,16 +37,45 @@ export default function CreateRecipeScreen() {
         description: undefined,
         photoUri: undefined,
     })
+    const [coverUri, setCoverUri] = useState<string | null>(null)
+
+    const pickCover = () => {
+        Alert.alert('Photo de couverture', undefined, [
+            {
+                text: 'Prendre une photo',
+                onPress: async () => {
+                    const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [16, 9], quality: 0.8 })
+                    if (!result.canceled) saveCover(result.assets[0].uri)
+                },
+            },
+            {
+                text: 'Choisir depuis la galerie',
+                onPress: async () => {
+                    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [16, 9], quality: 0.8 })
+                    if (!result.canceled) saveCover(result.assets[0].uri)
+                },
+            },
+            { text: 'Annuler', style: 'cancel' },
+        ])
+    }
+
+    const saveCover = async (uri: string) => {
+        const fileName = uri.split('/').pop() ?? `cover-${Date.now()}.jpg`
+        const stableUri = `${FileSystem.documentDirectory}${Date.now()}-${fileName}`
+        await FileSystem.copyAsync({ from: uri, to: stableUri })
+        setCoverUri(stableUri)
+        setForm(f => ({ ...f, photoUri: stableUri }))
+    }
 
     const handleSave = async () => {
-        if (!form.name) {
+        if (!form.name.trim()) {
             Alert.alert('Erreur', 'Le nom de la recette est obligatoire')
             return
         }
         try {
             await createRecipe(form)
             Alert.alert('Succès', 'Recette créée !', [
-                { text: 'OK', onPress: () => router.replace('/(tabs)/profile') }
+                { text: 'OK', onPress: () => router.replace('/(tabs)/profile') },
             ])
         } catch (e: any) {
             Alert.alert('Erreur', e.message)
@@ -53,139 +84,173 @@ export default function CreateRecipeScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
-                <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-
-                    {/* Header */}
-                    <View style={styles.header}>
-                        <View style={styles.headerText}>
-                            <Text style={styles.headerEyebrow}>Nouvelle recette</Text>
-                            <Text style={styles.headerTitle}>Créer{'\n'}une recette</Text>
-                        </View>
-                        <RecipePhotoPicker onPhotoChange={(uri) => setForm({ ...form, photoUri: uri })} />
-                    </View>
-
-                    {/* Section 1 — Infos de base */}
-                    <SectionTitle number="01" title="Informations" />
-
-                    <TextInput
-                        style={styles.nameInput}
-                        placeholder="Nom de la recette"
-                        placeholderTextColor={Colors.textSecondary}
-                        onChangeText={(text) => setForm({ ...form, name: text })}
-                    />
-
-                    <View style={styles.metaRow}>
-                        <View style={styles.metaCard}>
-                            <Text style={styles.metaLabel}>Personnes</Text>
-                            <PortionCounter
-                                value={form.portions}
-                                onChange={(value) => setForm({ ...form, portions: value })}
-                            />
-                        </View>
-                        <View style={styles.metaCard}>
-                            <Text style={styles.metaLabel}>Préparation</Text>
-                            <View style={styles.timeInput}>
-                                <TextInput
-                                    style={styles.timeTextInput}
-                                    placeholder="0"
-                                    placeholderTextColor={Colors.textSecondary}
-                                    keyboardType="numeric"
-                                    onChangeText={(text) => setForm({ ...form, prepTime: parseInt(text) || 0 })}
-                                />
-                                <Text style={styles.timeUnit}>min</Text>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                <ScrollView
+                    contentContainerStyle={styles.scroll}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* Cover photo — pleine largeur */}
+                    <TouchableOpacity style={styles.cover} onPress={pickCover} activeOpacity={0.85}>
+                        {coverUri ? (
+                            <Image source={{ uri: coverUri }} style={styles.coverImage} />
+                        ) : (
+                            <View style={styles.coverPlaceholder}>
+                                <ImagePlus size={36} color={Colors.primaryMuted} />
+                                <Text style={styles.coverPlaceholderText}>Ajouter une photo de couverture</Text>
                             </View>
-                        </View>
-                        <View style={styles.metaCard}>
-                            <Text style={styles.metaLabel}>Cuisson</Text>
-                            <View style={styles.timeInput}>
-                                <TextInput
-                                    style={styles.timeTextInput}
-                                    placeholder="0"
-                                    placeholderTextColor={Colors.textSecondary}
-                                    keyboardType="numeric"
-                                    onChangeText={(text) => setForm({ ...form, cookTime: parseInt(text) || 0 })}
-                                />
-                                <Text style={styles.timeUnit}>min</Text>
-                            </View>
-                        </View>
-                    </View>
-
-                    {/* Section 2 — Ingrédients */}
-                    <SectionTitle number="02" title="Ingrédients" />
-                    <IngredientSearch onChange={(ingredients) => setForm({ ...form, recipeIngredients: ingredients })} />
-
-                    {/* Section 3 — Étapes */}
-                    <SectionTitle number="03" title="Étapes" />
-                    <StepList onChange={(steps) => setForm({ ...form, steps })} />
-
-                    {/* Section 4 — Catégories */}
-                    <SectionTitle number="04" title="Catégories" />
-                    <View style={styles.placeholder}>
-                        <Text style={styles.placeholderText}>Tags — à venir</Text>
-                    </View>
-
-                    {/* Section 5 — Description */}
-                    <SectionTitle number="05" title="Description" />
-                    <TextInput
-                        style={styles.textarea}
-                        placeholder="Une courte description de votre recette... (optionnel)"
-                        placeholderTextColor={Colors.textSecondary}
-                        multiline
-                        numberOfLines={4}
-                        onChangeText={(text) => setForm({ ...form, description: text })}
-                    />
-
-                    {/* Bouton */}
-                    <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.85}>
-                        <Text style={styles.saveButtonText}>Enregistrer la recette</Text>
+                        )}
                     </TouchableOpacity>
 
+                    {/* Bloc titre */}
+                    <View style={styles.titleBlock}>
+                        <Text style={styles.eyebrow}>Nouvelle recette</Text>
+                        <TextInput
+                            style={styles.nameInput}
+                            placeholder="Nom de la recette..."
+                            placeholderTextColor={Colors.textSecondary}
+                            value={form.name}
+                            onChangeText={(text) => setForm({ ...form, name: text })}
+                            multiline={false}
+                        />
+                    </View>
+
+                    <View style={styles.content}>
+
+                        {/* 01 — Informations */}
+                        <SectionTitle number="01" title="Informations" />
+                        <View style={styles.metaRow}>
+                            <View style={[styles.metaCard, { flex: 1.3 }]}>
+                                <View style={styles.metaLabelRow}>
+                                    <Users size={11} color={Colors.primaryMuted} />
+                                    <Text style={styles.metaLabel}>Personnes</Text>
+                                </View>
+                                <PortionCounter
+                                    value={form.portions}
+                                    onChange={(value) => setForm({ ...form, portions: value })}
+                                />
+                            </View>
+                            <View style={styles.metaCard}>
+                                <View style={styles.metaLabelRow}>
+                                    <Clock size={11} color={Colors.primaryMuted} />
+                                    <Text style={styles.metaLabel}>Prép.</Text>
+                                </View>
+                                <View style={styles.timeRow}>
+                                    <TextInput
+                                        style={styles.timeInput}
+                                        placeholder="0"
+                                        placeholderTextColor={Colors.textSecondary}
+                                        keyboardType="numeric"
+                                        onChangeText={(text) => setForm({ ...form, prepTime: parseInt(text) || 0 })}
+                                        multiline={false}
+                                    />
+                                    <Text style={styles.timeUnit}>min</Text>
+                                </View>
+                            </View>
+                            <View style={styles.metaCard}>
+                                <View style={styles.metaLabelRow}>
+                                    <Clock size={11} color={Colors.primaryMuted} />
+                                    <Text style={styles.metaLabel}>Cuisson</Text>
+                                </View>
+                                <View style={styles.timeRow}>
+                                    <TextInput
+                                        style={styles.timeInput}
+                                        placeholder="0"
+                                        placeholderTextColor={Colors.textSecondary}
+                                        keyboardType="numeric"
+                                        onChangeText={(text) => setForm({ ...form, cookTime: parseInt(text) || 0 })}
+                                        multiline={false}
+                                    />
+                                    <Text style={styles.timeUnit}>min</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* 02 — Ingrédients */}
+                        <SectionTitle number="02" title="Ingrédients" />
+                        <IngredientSearch onChange={(ingredients) => setForm({ ...form, recipeIngredients: ingredients })} />
+
+                        {/* 03 — Étapes */}
+                        <SectionTitle number="03" title="Étapes" />
+                        <StepList onChange={(steps) => setForm({ ...form, steps })} />
+
+                        {/* 04 — Catégories */}
+                        <SectionTitle number="04" title="Catégories" />
+                        <View style={styles.comingSoon}>
+                            <Text style={styles.comingSoonText}>Tags — à venir</Text>
+                        </View>
+
+                        {/* 05 — Description */}
+                        <SectionTitle number="05" title="Description" />
+                        <TextInput
+                            style={styles.textarea}
+                            placeholder="Une courte description... (optionnel)"
+                            placeholderTextColor={Colors.textSecondary}
+                            multiline
+                            numberOfLines={4}
+                            onChangeText={(text) => setForm({ ...form, description: text })}
+                            textAlignVertical="top"
+                        />
+
+                        {/* Bouton */}
+                        <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.85}>
+                            <Text style={styles.saveButtonText}>Enregistrer la recette</Text>
+                        </TouchableOpacity>
+
+                    </View>
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
     )
 }
 
+const COVER_HEIGHT = 220
+
 const styles = StyleSheet.create({
-    container: {
+    container: { flex: 1, backgroundColor: Colors.background },
+    scroll: { flexGrow: 1, paddingBottom: Spacing.xxxl },
+
+    // Cover
+    cover: { height: COVER_HEIGHT, width: '100%', overflow: 'hidden' },
+    coverImage: { width: '100%', height: COVER_HEIGHT, resizeMode: 'cover' },
+    coverPlaceholder: {
         flex: 1,
-        backgroundColor: Colors.background,
+        backgroundColor: Colors.cardLight,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.sm,
     },
-    keyboardView: {
-        flex: 1,
-    },
-    scroll: {
-        flexGrow: 1,
-        paddingHorizontal: Spacing.xl,
-        paddingBottom: Spacing.xxxl,
+    coverPlaceholderText: {
+        fontSize: FontSize.sm,
+        color: Colors.primaryMuted,
+        fontWeight: FontWeight.medium,
     },
 
-    // Header
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-end',
+    // Titre
+    titleBlock: {
+        paddingHorizontal: Spacing.xl,
         paddingTop: Spacing.lg,
-        paddingBottom: Spacing.xl,
+        paddingBottom: Spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
     },
-    headerText: {
-        flex: 1,
-    },
-    headerEyebrow: {
-        fontSize: FontSize.sm,
+    eyebrow: {
+        fontSize: FontSize.xs,
         fontWeight: FontWeight.medium,
         color: Colors.primaryLight,
         letterSpacing: 2,
         textTransform: 'uppercase',
         marginBottom: Spacing.xs,
     },
-    headerTitle: {
-        fontSize: 36,
+    nameInput: {
+        fontSize: 28,
         fontWeight: FontWeight.bold,
-        color: Colors.primary,
-        lineHeight: 40,
+        color: Colors.textPrimary,
+        padding: 0,
     },
+
+    // Contenu
+    content: { paddingHorizontal: Spacing.xl },
 
     // Section headers
     sectionHeader: {
@@ -195,84 +260,62 @@ const styles = StyleSheet.create({
         marginTop: Spacing.xl,
         marginBottom: Spacing.md,
     },
-    sectionNumber: {
-        width: 28,
-        height: 28,
-        borderRadius: 8,
-        backgroundColor: Colors.primary,
+    sectionBadge: {
+        width: 26,
+        height: 26,
+        borderRadius: 7,
+        backgroundColor: Colors.primaryLight,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    sectionNumberText: {
-        fontSize: FontSize.xs,
+    sectionBadgeText: {
+        fontSize: 10,
         fontWeight: FontWeight.bold,
         color: Colors.surface,
-        letterSpacing: 1,
+        letterSpacing: 0.5,
     },
     sectionTitle: {
-        fontSize: FontSize.lg,
+        fontSize: FontSize.md,
         fontWeight: FontWeight.semibold,
         color: Colors.textPrimary,
     },
-    sectionLine: {
-        flex: 1,
-        height: 1,
-        backgroundColor: Colors.border,
-    },
+    sectionLine: { flex: 1, height: 1, backgroundColor: Colors.border },
 
-    // Nom
-    nameInput: {
-        fontSize: FontSize.xl,
-        fontWeight: FontWeight.semibold,
-        color: Colors.textPrimary,
-        backgroundColor: Colors.surface,
-        borderRadius: BorderRadius.md,
-        borderWidth: 1,
-        borderColor: Colors.border,
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.md,
-        height: 56,
-    },
-
-    // Meta row (personnes, prep, cuisson)
-    metaRow: {
-        flexDirection: 'row',
-        gap: Spacing.sm,
-        marginTop: Spacing.md,
-    },
+    // Meta cards
+    metaRow: { flexDirection: 'row', gap: Spacing.sm },
     metaCard: {
         flex: 1,
         backgroundColor: Colors.surface,
         borderRadius: BorderRadius.md,
         borderWidth: 1,
         borderColor: Colors.border,
-        padding: Spacing.sm,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: Spacing.sm,
+    },
+    metaLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginBottom: 4,
     },
     metaLabel: {
-        fontSize: FontSize.xs,
+        fontSize: 10,
         fontWeight: FontWeight.medium,
         color: Colors.textSecondary,
-        marginBottom: Spacing.xs,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
+    timeRow: { flexDirection: 'row', alignItems: 'center', height: 36 },
     timeInput: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        height: 36,
-    },
-    timeTextInput: {
         flex: 1,
         fontSize: FontSize.lg,
         fontWeight: FontWeight.semibold,
         color: Colors.textPrimary,
+        padding: 0,
     },
-    timeUnit: {
-        fontSize: FontSize.sm,
-        color: Colors.textSecondary,
-    },
+    timeUnit: { fontSize: FontSize.xs, color: Colors.textSecondary },
 
-    // Textarea
+    // Description
     textarea: {
         backgroundColor: Colors.surface,
         borderRadius: BorderRadius.md,
@@ -283,11 +326,10 @@ const styles = StyleSheet.create({
         fontSize: FontSize.md,
         color: Colors.textPrimary,
         minHeight: 100,
-        textAlignVertical: 'top',
     },
 
-    // Placeholder
-    placeholder: {
+    // Categories placeholder
+    comingSoon: {
         backgroundColor: Colors.surface,
         borderRadius: BorderRadius.md,
         borderWidth: 1,
@@ -296,24 +338,20 @@ const styles = StyleSheet.create({
         padding: Spacing.lg,
         alignItems: 'center',
     },
-    placeholderText: {
-        color: Colors.textSecondary,
-        fontSize: FontSize.sm,
-    },
+    comingSoonText: { color: Colors.textSecondary, fontSize: FontSize.sm },
 
     // Save button
     saveButton: {
-        width: '100%',
-        height: 56,
-        backgroundColor: Colors.primary,
+        height: ComponentSize.buttonHeight,
+        backgroundColor: Colors.primaryButton,
         borderRadius: BorderRadius.md,
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: Spacing.xl,
     },
     saveButtonText: {
-        color: Colors.surface,
-        fontSize: FontSize.lg,
+        color: Colors.primary,
+        fontSize: FontSize.md,
         fontWeight: FontWeight.bold,
         letterSpacing: 0.5,
     },
