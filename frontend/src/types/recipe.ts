@@ -1,5 +1,5 @@
 import { CreateRecipeIngredientDTO, RecipeIngredient } from "./recipeIngredient";
-import { CreateStepDTO } from './step'
+import { CreateStepDTO, Step } from './step'
 
 
 export type Recipe = {
@@ -11,10 +11,16 @@ export type Recipe = {
     photo?: string | null;
     portion: number;
     description?: string | null;
+<<<<<<< HEAD
     price?: number | null;
     nutritionalScore?: number | null;
     creatorID: string;
     recipeIngredients: RecipeIngredient[];
+=======
+    ingredients: RecipeIngredient[];
+    steps: Step[];
+
+>>>>>>> origin/elodie_recipeScreen
 };
 
 export type CreateRecipeDTO = {
