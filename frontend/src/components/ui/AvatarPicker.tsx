@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { View, Image, TouchableOpacity, StyleSheet, Alert } from 'react-native'
 import { Camera, CircleUserRound } from 'lucide-react-native'
 import { Colors } from '@/src/constants'
+import * as FileSystem from 'expo-file-system/legacy';
 
 
 type Props = {
@@ -20,16 +21,25 @@ export default function AvatarPicker({ onAvatarChange }: Props) {
                 quality: 0.8,
             })
             : await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ['images'],
                 allowsEditing: true,
                 aspect: [1, 1],
                 quality: 0.8,
             })
 
         if (!result.canceled) {
-            const uri = result.assets[0].uri
-            setAvatarUri(uri)
-            onAvatarChange(uri)
+            const pickedUri = result.assets[0].uri;
+
+            const fileName = pickedUri.split('/').pop() ?? `avatar-${Date.now()}.jpg`;
+            const newUri = `${FileSystem.documentDirectory}${fileName}`;
+
+            await FileSystem.copyAsync({
+                from: pickedUri,
+                to: newUri,
+            });
+
+            setAvatarUri(newUri);
+            onAvatarChange(newUri);
         }
     }
 

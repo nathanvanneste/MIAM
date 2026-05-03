@@ -1,10 +1,6 @@
 // src/screens/ProfileScreen.tsx
-import { useState } from "react";
-<<<<<<< HEAD
+import { useEffect, useState } from "react";
 import { Text, StyleSheet, ScrollView, Pressable} from "react-native";
-=======
-import { View, Text, StyleSheet, Image, ScrollView, Pressable } from "react-native";
->>>>>>> smartpld
 import SearchBar from "../components/ui/SearchBar";
 import RecipeCard from "../components/ui/Recipe/RecipeCard";
 import { Colors } from "../constants/colors";
@@ -15,6 +11,8 @@ import Grid from "../components/ui/Recipe/RecipeGrid";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ProfileDescription from "../components/ui/Profile/ProfileDescription";
 import { router } from "expo-router";
+import { getSignedAvatarUrl } from "../services/storage.service";
+import { getMe, type User } from "../services/users.service";
 
 type RecipeWithStyle = Recipe & {
   color?: string;
@@ -23,6 +21,29 @@ type RecipeWithStyle = Recipe & {
 
 export default function ProfileScreen() {
   const [search, setSearch] = useState("");
+  const [user, setUser] = useState<User | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const me = await getMe();
+
+        setUser(me);
+
+        if (me.avatar) {
+          const signedUrl = await getSignedAvatarUrl(me.avatar);
+          setAvatarUrl(signedUrl);
+        } else {
+          setAvatarUrl(null);
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement du profil :", error);
+      }
+    }
+
+    loadProfile();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -36,22 +57,21 @@ export default function ProfileScreen() {
         <Settings size={26} color={Colors.textPrimary} />
       </Pressable>
 
-<<<<<<< HEAD
         <ProfileDescription
-          avatarUrl="https://api.dicebear.com/7.x/adventurer/png?seed=paul"
-          username="paulcharp69"
-          bio="Cuisiner, partager, se régaler 👨‍🍳"
+          avatarUrl={
+            avatarUrl ??
+            "https://api.dicebear.com/7.x/adventurer/png?seed=default"
+          }
+          username={user?.pseudo ?? "Chargement..."}
+          bio={
+            user
+              ? `${user.firstName} ${user.lastName}`
+              : "Chargement du profil..."
+          }
           recipesCount={28}
           friendsCount={109}
           pendingCount={3}
         />
-=======
-        <View style={styles.statsRow}>
-          <StatCard icon={<ChefHat size={26} color={COLORS.textPrimary} />} value="28" label="recettes" />
-          <StatCard icon={<UsersRound size={26} color={COLORS.textPrimary} />} value="109" label="amis" />
-          <StatCard icon={<Mail size={26} color={COLORS.textPrimary} />} value="" label="en attente" badge="3" />
-        </View>
->>>>>>> smartpld
 
         <Text style={styles.sectionTitle}>Mes recettes</Text>
 
@@ -124,10 +144,6 @@ const recipes: RecipeWithStyle[] = [
     recipeIngredients: [],
     color: "#FDEAF2",
   },
-<<<<<<< HEAD
-=======
-
->>>>>>> smartpld
   {
     recipeID: 4,
     name: "Baguette",
@@ -238,15 +254,9 @@ const styles = StyleSheet.create({
   },
 
   statValue: {
-<<<<<<< HEAD
     fontSize: FontSize.xl,
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
-=======
-    fontSize: 20,
-    fontWeight: "700",
-    color: COLORS.textPrimary,
->>>>>>> smartpld
     marginTop: 0,
     marginBottom: 5,
   },
