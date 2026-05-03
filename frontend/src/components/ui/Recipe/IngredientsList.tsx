@@ -5,7 +5,7 @@ import { Minus, Plus, Tag, Pencil, Trash2 } from "lucide-react-native";
 import { Colors } from "@/src/constants/colors";
 import { FontSize, FontWeight } from "@/src/constants/typography";
 import { RecipeIngredient } from "@/src/types/recipeIngredient";
-import IngredientFormSheet from "./IngredientFormSheet";
+import IngredientFormSheet, { IngredientFormData } from "./IngredientFormSheet";
 
 type IngredientsListProps = {
   ingredients: RecipeIngredient[];
@@ -14,9 +14,8 @@ type IngredientsListProps = {
   categories: string[];
   onIncrement: () => void;
   onDecrement: () => void;
-  // Edit callbacks — if undefined, edit mode is not available
-  onAddIngredient?: (data: { name: string; quantity: number; unit: string }) => void;
-  onEditIngredient?: (index: number, data: { name: string; quantity: number; unit: string }) => void;
+  onAddIngredient?: (data: IngredientFormData) => void;
+  onEditIngredient?: (index: number, data: IngredientFormData) => void;
   onDeleteIngredient?: (index: number) => void;
 };
 
@@ -40,7 +39,6 @@ export default function IngredientsList({
 
   const isEditable = !!(onAddIngredient || onEditIngredient || onDeleteIngredient);
 
-  // Sheet state
   const [sheetVisible, setSheetVisible] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
@@ -54,7 +52,7 @@ export default function IngredientsList({
     setSheetVisible(true);
   };
 
-  const handleSheetSave = (data: { name: string; quantity: number; unit: string }) => {
+  const handleSheetSave = (data: IngredientFormData) => {
     if (editingIndex !== null) {
       onEditIngredient?.(editingIndex, data);
     } else {
@@ -91,47 +89,30 @@ export default function IngredientsList({
       {/* Section title */}
       <Text style={styles.sectionTitle}>Ingrédients</Text>
 
-      {/* Ingredients list */}
+      {/* List */}
       <View style={styles.list}>
         {scaled.map((ing, index) => (
           <View key={index} style={styles.row}>
-            {/* Quantity */}
             <Text style={styles.quantity}>
               {ing.quantity > 0 ? ing.quantity : ""}
             </Text>
 
-            {/* Unit + Name */}
             <Text style={styles.ingredientText} numberOfLines={1}>
               {ing.unit?.type ? `${ing.unit.type} ` : ""}
               {ing.ingredient.name}
             </Text>
 
-            {/* Edit actions */}
-            {isEditable && (
+            {isEditable ? (
               <View style={styles.actions}>
-                <Pressable
-                  onPress={() => openEdit(index)}
-                  hitSlop={8}
-                  style={styles.actionButton}
-                >
+                <Pressable onPress={() => openEdit(index)} hitSlop={8} style={styles.actionButton}>
                   <Pencil size={16} color={Colors.primaryMuted} />
                 </Pressable>
-                <Pressable
-                  onPress={() => onDeleteIngredient?.(index)}
-                  hitSlop={8}
-                  style={styles.actionButton}
-                >
+                <Pressable onPress={() => onDeleteIngredient?.(index)} hitSlop={8} style={styles.actionButton}>
                   <Trash2 size={16} color={Colors.error} />
                 </Pressable>
               </View>
-            )}
-
-            {/* Read-only bullet */}
-            {!isEditable && (
-              <>
-                <View style={styles.spacer} />
-                <View style={styles.bullet} />
-              </>
+            ) : (
+              <View style={styles.bullet} />
             )}
           </View>
         ))}
@@ -152,7 +133,6 @@ export default function IngredientsList({
         </View>
       )}
 
-      {/* Bottom sheet */}
       <IngredientFormSheet
         visible={sheetVisible}
         ingredient={editingIndex !== null ? ingredients[editingIndex] : undefined}
@@ -222,7 +202,7 @@ const styles = StyleSheet.create({
   },
 
   list: {
-    gap: 2,
+    gap: 6,
     marginBottom: 28,
   },
 
@@ -233,7 +213,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: Colors.surface,
     borderRadius: 10,
-    marginBottom: 6,
     gap: 8,
   },
 
@@ -260,10 +239,6 @@ const styles = StyleSheet.create({
 
   actionButton: {
     padding: 2,
-  },
-
-  spacer: {
-    flex: 1,
   },
 
   bullet: {

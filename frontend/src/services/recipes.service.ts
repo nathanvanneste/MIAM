@@ -78,4 +78,3 @@ export const updateRecipe = async (
     body: JSON.stringify(data),
   });
 };
-

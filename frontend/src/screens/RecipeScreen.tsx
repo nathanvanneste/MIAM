@@ -10,6 +10,7 @@ import PreparationList from "@/src/components/ui/Recipe/PreparationList";
 import EditHeaderSheet from "@/src/components/ui/Recipe/EditHeaderSheet";
 import { getRecipeById, updateRecipe } from "@/src/services/recipes.service";
 import type { Recipe } from "@/src/types/recipe";
+import type { IngredientFormData } from "@/src/components/ui/Recipe/IngredientFormSheet";
 import { useRouter } from "expo-router";
 
 type RecipeScreenProps = {
@@ -22,6 +23,14 @@ const formatTime = (minutes: number): string =>
   minutes >= 60
     ? `${Math.floor(minutes / 60)}h${minutes % 60 > 0 ? `${minutes % 60}min` : ""}`
     : `${minutes}min`;
+
+// Maps recipe ingredients to the shape the backend expects
+const toBackendIngredients = (ingredients: Recipe["ingredients"]) =>
+  ingredients.map((ing) => ({
+    ingredientID: ing.ingredientID,
+    quantity: ing.quantity,
+    unitID: ing.unitID,
+  }));
 
 export default function RecipeScreen({ recipeID, onBack, onShare }: RecipeScreenProps) {
   const router = useRouter();
@@ -47,75 +56,89 @@ export default function RecipeScreen({ recipeID, onBack, onShare }: RecipeScreen
     load();
   }, [recipeID]);
 
+  // ── Header ───────────────────────────────────────────────────
   const handleSaveHeader = async (data: { title: string; prepTime: number; cookTime: number }) => {
     if (!recipe) return;
-    const updated = { ...recipe, name: data.title, prepTime: data.prepTime, cookTime: data.cookTime };
-    setRecipe(updated);
+    const previous = recipe;
+    setRecipe({ ...recipe, name: data.title, prepTime: data.prepTime, cookTime: data.cookTime });
     try {
       await updateRecipe(recipeID, { name: data.title, prepTime: data.prepTime, cookTime: data.cookTime });
     } catch (e) {
       console.error("Erreur mise à jour header", e);
-      setRecipe(recipe);
+      setRecipe(previous);
     }
   };
 
-  const handleAddIngredient = async (data: { name: string; quantity: number; unit: string }) => {
+  // ── Ingredients ──────────────────────────────────────────────
+  const handleAddIngredient = async (data: IngredientFormData) => {
     if (!recipe) return;
+    const previous = recipe;
     const newIngredient = {
-      ingredient: { name: data.name },
+      recipeID,
+      ingredientID: data.ingredientID,
       quantity: data.quantity,
-      unit: { type: data.unit },
-    } as any;
-    const updated = { ...recipe, ingredients: [...recipe.ingredients, newIngredient] };
-    setRecipe(updated);
+      unitID: data.unitID,
+      ingredient: { ingredientID: data.ingredientID, name: data.name } as any,
+      unit: { unitID: data.unitID, type: data.unit },
+    };
+    const updatedIngredients = [...recipe.ingredients, newIngredient];
+    setRecipe({ ...recipe, ingredients: updatedIngredients });
     try {
-      await updateRecipe(recipeID, { ingredients: updated.ingredients });
+      await updateRecipe(recipeID, { ingredients: toBackendIngredients(updatedIngredients) });
     } catch (e) {
       console.error("Erreur ajout ingrédient", e);
-      setRecipe(recipe);
+      setRecipe(previous);
     }
   };
 
-  const handleEditIngredient = async (index: number, data: { name: string; quantity: number; unit: string }) => {
+  const handleEditIngredient = async (index: number, data: IngredientFormData) => {
     if (!recipe) return;
+    const previous = recipe;
     const updatedIngredients = recipe.ingredients.map((ing, i) =>
       i === index
-        ? { ...ing, ingredient: { ...ing.ingredient, name: data.name }, quantity: data.quantity, unit: { type: data.unit } }
+        ? {
+            ...ing,
+            ingredientID: data.ingredientID,
+            quantity: data.quantity,
+            unitID: data.unitID,
+            ingredient: { ...ing.ingredient, ingredientID: data.ingredientID, name: data.name },
+            unit: { unitID: data.unitID, type: data.unit },
+          }
         : ing
     );
-    const updated = { ...recipe, ingredients: updatedIngredients };
-    setRecipe(updated);
+    setRecipe({ ...recipe, ingredients: updatedIngredients });
     try {
-      await updateRecipe(recipeID, { ingredients: updatedIngredients });
+      await updateRecipe(recipeID, { ingredients: toBackendIngredients(updatedIngredients) });
     } catch (e) {
       console.error("Erreur modification ingrédient", e);
-      setRecipe(recipe);
+      setRecipe(previous);
     }
   };
 
   const handleDeleteIngredient = async (index: number) => {
     if (!recipe) return;
+    const previous = recipe;
     const updatedIngredients = recipe.ingredients.filter((_, i) => i !== index);
-    const updated = { ...recipe, ingredients: updatedIngredients };
-    setRecipe(updated);
+    setRecipe({ ...recipe, ingredients: updatedIngredients });
     try {
-      await updateRecipe(recipeID, { ingredients: updatedIngredients });
+      await updateRecipe(recipeID, { ingredients: toBackendIngredients(updatedIngredients) });
     } catch (e) {
       console.error("Erreur suppression ingrédient", e);
-      setRecipe(recipe);
+      setRecipe(previous);
     }
   };
 
+  // ── Steps ────────────────────────────────────────────────────
   const handleSaveSteps = async (steps: string[]) => {
     if (!recipe) return;
+    const previous = recipe;
     const updatedSteps = steps.map((text, i) => ({ ...(recipe.steps[i] ?? {}), text }));
-    const updated = { ...recipe, steps: updatedSteps };
-    setRecipe(updated);
+    setRecipe({ ...recipe, steps: updatedSteps });
     try {
       await updateRecipe(recipeID, { steps: updatedSteps });
     } catch (e) {
       console.error("Erreur mise à jour étapes", e);
-      setRecipe(recipe);
+      setRecipe(previous);
     }
   };
 
