@@ -2,7 +2,10 @@ import { Ingredient } from "./ingredient";
 
 export type RecipeIngredient = {
     ingredient: Ingredient
-    unit: string;
+    unit: {          // ← était string, c'est un objet
+        unitID: number;
+        type: string;
+    };
     quantity: number;
 
 };

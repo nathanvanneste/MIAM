@@ -1,5 +1,5 @@
 import { CreateRecipeIngredientDTO, RecipeIngredient } from "./recipeIngredient";
-import { CreateStepDTO } from './step'
+import { CreateStepDTO, Step } from './step'
 
 
 export type Recipe = {
@@ -11,7 +11,8 @@ export type Recipe = {
     photo?: string | null;
     portion: number;
     description?: string | null;
-    recipeIngredients: RecipeIngredient[]
+    ingredients: RecipeIngredient[];
+    steps: Step[];
 
 };
 

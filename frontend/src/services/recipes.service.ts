@@ -9,6 +9,12 @@ export const getMyRecipes = async (): Promise<Recipe[]> => {
   });
 };
 
+export const getRecipeById = async (recipeID: number): Promise<Recipe> => {
+  return await apiFetch(`/recipes/${recipeID}`, {
+    method: 'GET',
+  });
+};
+
 export const createRecipe = async (form: CreateRecipeDTO): Promise<Recipe> => {
   const recipe = await apiFetch('/recipes', {
     method: 'POST',
@@ -52,6 +58,24 @@ export const updateRecipePhoto = async (
     body: JSON.stringify({
       photo,
     }),
+  });
+};
+
+export const updateRecipe = async (
+  recipeID: number,
+  data: Partial<{
+    name: string;
+    prepTime: number;
+    cookTime: number;
+    description: string;
+    portion: number;
+    ingredients: any[];
+    steps: any[];
+  }>
+): Promise<Recipe> => {
+  return await apiFetch(`/recipes/${recipeID}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
   });
 };
 
