@@ -12,9 +12,6 @@ export class CreateShoppingItemDto {
   @IsBoolean()
   checked?: boolean;
 
-  @IsInt()
-  listID!: number;
-
   @IsOptional()
   @IsInt()
   ingredientID?: number;

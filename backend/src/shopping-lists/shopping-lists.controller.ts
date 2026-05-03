@@ -11,7 +11,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ShoppingListsService } from './shopping-lists.service';
-import { CreateShoppingListDto } from './dto/create-shopping-list.dto';
 import { UpdateShoppingListDto } from './dto/update-shopping-list.dto';
 import { CreateShoppingItemDto } from './dto/create-shopping-item.dto';
 import { UpdateShoppingItemDto } from './dto/update-shopping-item.dto';
@@ -25,45 +24,49 @@ export class ShoppingListsController {
     private readonly shoppingListsService: ShoppingListsService,
   ) {}
 
-  @Post()
-  create(@Req() req: AuthenticatedRequest, @Body() dto: CreateShoppingListDto) {
-    return this.shoppingListsService.create(req.user.userID, dto);
-  }
-
   @Get('me')
   findMine(@Req() req: AuthenticatedRequest) {
     return this.shoppingListsService.findMine(req.user.userID);
   }
 
+  /*
   @Get()
   findAll() {
     return this.shoppingListsService.findAll();
   }
+  */
 
   @Get(':listID')
-  findOne(@Param('listID', ParseIntPipe) listID: number) {
-    return this.shoppingListsService.findOne(listID);
+  findOne(
+     @Req() req: AuthenticatedRequest,
+     @Param('listID', ParseIntPipe) listID: number,
+    ) {
+    return this.shoppingListsService.findOne(req.user.userID, listID);
   }
 
   @Patch(':listID')
   update(
+    @Req() req: AuthenticatedRequest,
     @Param('listID', ParseIntPipe) listID: number,
     @Body() dto: UpdateShoppingListDto,
   ) {
-    return this.shoppingListsService.update(listID, dto);
+    return this.shoppingListsService.update(req.user.userID, listID, dto);
   }
 
+  /*
   @Delete(':listID')
   remove(@Param('listID', ParseIntPipe) listID: number) {
     return this.shoppingListsService.remove(listID);
   }
+    */
 
   @Post(':listID/items')
   addItem(
+    @Req() req: AuthenticatedRequest,
     @Param('listID', ParseIntPipe) listID: number,
     @Body() dto: CreateShoppingItemDto,
   ) {
-    return this.shoppingListsService.addItem(listID, dto);
+    return this.shoppingListsService.addItem(req.user.userID, listID, dto);
   }
 
   @Post(':listID/import-recipe/:recipeID')
@@ -81,19 +84,26 @@ export class ShoppingListsController {
 
   @Patch('items/:itemID')
   updateItem(
+    @Req() req: AuthenticatedRequest,
     @Param('itemID', ParseIntPipe) itemID: number,
     @Body() dto: UpdateShoppingItemDto,
   ) {
-    return this.shoppingListsService.updateItem(itemID, dto);
+    return this.shoppingListsService.updateItem(req.user.userID, itemID, dto);
   }
 
   @Delete('items/:itemID')
-  removeItem(@Param('itemID', ParseIntPipe) itemID: number) {
-    return this.shoppingListsService.removeItem(itemID);
+  removeItem(
+    @Req() req: AuthenticatedRequest,
+    @Param('itemID', ParseIntPipe) itemID: number,
+  ) {
+    return this.shoppingListsService.removeItem(req.user.userID, itemID);
   }
 
   @Patch('items/:itemID/toggle')
-  toggleItem(@Param('itemID', ParseIntPipe) itemID: number) {
-    return this.shoppingListsService.toggleItem(itemID);
+  toggleItem(
+    @Req() req: AuthenticatedRequest,
+    @Param('itemID', ParseIntPipe) itemID: number,
+  ) {
+    return this.shoppingListsService.toggleItem(req.user.userID, itemID);
   }
 }
