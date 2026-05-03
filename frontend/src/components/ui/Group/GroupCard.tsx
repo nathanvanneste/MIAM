@@ -1,108 +1,93 @@
-// src/components/ui/Group/GroupCard.tsx
-import { View, Text, Image, StyleSheet, Pressable, useWindowDimensions } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { ChevronRight, UsersRound, CookingPot } from "lucide-react-native";
 import { Colors } from "../../../constants/colors";
 import { FontSize, FontWeight } from "../../../constants/typography";
 
+const PALETTE = ['#FFE6CF', '#E2F9F7', '#E9FADB', '#F0CAA7', '#FBE9DC', '#EEE0FF']
+
+function groupColor(name: string): string {
+    let hash = 0
+    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) % PALETTE.length
+    return PALETTE[Math.abs(hash)]
+}
+
 type GroupCardProps = {
-  image: string;
-  title: string;
-  membersCount: number;
-  recipesCount: number;
-  onPress?: () => void;
-};
+    name: string
+    membersCount: number
+    recipesCount: number
+    onPress?: () => void
+}
 
-export default function GroupCard({
-  image,
-  title,
-  membersCount,
-  recipesCount,
-  onPress,
-}: GroupCardProps) {
-  const { width } = useWindowDimensions();
+export default function GroupCard({ name, membersCount, recipesCount, onPress }: GroupCardProps) {
+    const bg = groupColor(name)
+    const initial = name.trim()[0]?.toUpperCase() ?? '?'
 
-  const imageSize = Math.round(width * 0.2);  // ~20% de la largeur écran
-  const cardHeight = Math.round(imageSize * 1.2);
+    return (
+        <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
+            {/* Initiale colorée */}
+            <View style={[styles.avatar, { backgroundColor: bg }]}>
+                <Text style={styles.avatarText}>{initial}</Text>
+            </View>
 
-  return (
-    <Pressable
-      style={[styles.card, { height: cardHeight }]}
-      onPress={onPress}
-    >
-      <Image
-        source={{ uri: image }}
-        style={[
-          styles.image,
-          {
-            width: imageSize,
-            height: imageSize,
-            borderRadius: imageSize / 2,
-          },
-        ]}
-      />
+            <View style={styles.content}>
+                <Text style={styles.title} numberOfLines={1}>{name}</Text>
+                <View style={styles.infoRow}>
+                    <View style={styles.info}>
+                        <UsersRound size={14} color={Colors.primaryMuted} />
+                        <Text style={styles.infoText}>{membersCount}</Text>
+                    </View>
+                    <View style={styles.info}>
+                        <CookingPot size={14} color={Colors.primaryMuted} />
+                        <Text style={styles.infoText}>{recipesCount}</Text>
+                    </View>
+                </View>
+            </View>
 
-      <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={1}>
-          {title}
-        </Text>
-
-        <View style={styles.infoRow}>
-          <UsersRound size={18} color={Colors.primaryMuted} />
-          <Text style={styles.infoText}>{membersCount} personnes</Text>
-        </View>
-
-        <View style={styles.infoRow}>
-          <CookingPot size={18} color={Colors.primaryMuted} />
-          <Text style={styles.infoText}>{recipesCount} recettes</Text>
-        </View>
-      </View>
-
-      <ChevronRight size={22} color={Colors.primaryMuted} />
-    </Pressable>
-  );
+            <ChevronRight size={20} color={Colors.border} />
+        </TouchableOpacity>
+    )
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: 23,
-    paddingHorizontal: 13,
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-    elevation: 3,
-  },
-
-  image: {
-    marginRight: 12,
-  },
-
-  content: {
-    flex: 1,
-  },
-
-  title: {
-    fontSize: FontSize.xl,
-    fontWeight: FontWeight.bold,
-    color: Colors.textPrimary,
-    marginBottom: 3,
-  },
-
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    marginTop: 4,
-  },
-
-  infoText: {
-    fontSize: FontSize.lg,
-    color: Colors.primaryMuted,
-    fontWeight: FontWeight.medium,
-  },
-});
+    card: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Colors.surface,
+        borderRadius: 20,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        gap: 14,
+        shadowColor: '#000',
+        shadowOpacity: 0.04,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    avatar: {
+        width: 54,
+        height: 54,
+        borderRadius: 27,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    avatarText: {
+        fontSize: FontSize.xxl,
+        fontWeight: FontWeight.bold,
+        color: Colors.primary,
+    },
+    content: { flex: 1 },
+    title: {
+        fontSize: FontSize.lg,
+        fontWeight: FontWeight.bold,
+        color: Colors.textPrimary,
+        marginBottom: 4,
+    },
+    infoRow: { flexDirection: 'row', gap: 14 },
+    info: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    infoText: {
+        fontSize: FontSize.sm,
+        color: Colors.primaryMuted,
+        fontWeight: FontWeight.medium,
+    },
+})

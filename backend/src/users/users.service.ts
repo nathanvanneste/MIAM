@@ -334,6 +334,32 @@ private readonly include = {
     });
   }
 
+  async findMyFriends(userID: string) {
+    const friendships = await this.prisma.friendship.findMany({
+      where: {
+        status: 'ACCEPTED',
+        OR: [{ requesterID: userID }, { receiverID: userID }],
+      },
+      include: { requester: true, receiver: true },
+    });
+    return friendships.map(f =>
+      f.requesterID === userID ? f.receiver : f.requester,
+    );
+  }
+
+  async findMyInvitations(userID: string) {
+    return this.prisma.friendship.findMany({
+      where: { receiverID: userID, status: 'PENDING' },
+      include: { requester: true },
+    });
+  }
+
+  async findMySentRequests(userID: string) {
+    return this.prisma.friendship.findMany({
+      where: { requesterID: userID, status: 'PENDING' },
+    });
+  }
+
   async updateMyAvatar(userID: string, avatar: string) {
     if (!avatar.startsWith(`${userID}/`)) {
       throw new BadRequestException(

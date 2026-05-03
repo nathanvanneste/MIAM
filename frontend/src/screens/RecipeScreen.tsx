@@ -1,4 +1,3 @@
-// src/screens/RecipeScreen.tsx
 import { useState, useEffect } from "react";
 import { StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -9,13 +8,13 @@ import IngredientsList from "@/src/components/ui/Recipe/IngredientsList";
 import PreparationList from "@/src/components/ui/Recipe/PreparationList";
 import EditHeaderSheet from "@/src/components/ui/Recipe/EditHeaderSheet";
 import { getRecipeById, updateRecipe } from "@/src/services/recipes.service";
-import type { Recipe } from "@/src/types/recipe";
+import type { RecipeDetail } from "@/src/services/recipes.service";
+import type { RecipeIngredient } from "@/src/types/recipeIngredient";
 import type { IngredientFormData } from "@/src/components/ui/Recipe/IngredientFormSheet";
 import { useRouter } from "expo-router";
 
 type RecipeScreenProps = {
   recipeID: number;
-  onBack?: () => void;
   onShare?: () => void;
 };
 
@@ -24,19 +23,18 @@ const formatTime = (minutes: number): string =>
     ? `${Math.floor(minutes / 60)}h${minutes % 60 > 0 ? `${minutes % 60}min` : ""}`
     : `${minutes}min`;
 
-// Maps recipe ingredients to the shape the backend expects
-const toBackendIngredients = (ingredients: Recipe["ingredients"]) =>
+const toBackendIngredients = (ingredients: RecipeIngredient[]) =>
   ingredients.map((ing) => ({
     ingredientID: ing.ingredientID,
     quantity: ing.quantity,
     unitID: ing.unitID,
   }));
 
-export default function RecipeScreen({ recipeID, onBack, onShare }: RecipeScreenProps) {
+export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
   const router = useRouter();
   const [tab, setTab] = useState<RecipeTab>("ingredients");
   const [portions, setPortions] = useState<number>(1);
-  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [headerSheetVisible, setHeaderSheetVisible] = useState(false);
@@ -56,37 +54,32 @@ export default function RecipeScreen({ recipeID, onBack, onShare }: RecipeScreen
     load();
   }, [recipeID]);
 
-  // ── Header ───────────────────────────────────────────────────
   const handleSaveHeader = async (data: { title: string; prepTime: number; cookTime: number }) => {
     if (!recipe) return;
     const previous = recipe;
     setRecipe({ ...recipe, name: data.title, prepTime: data.prepTime, cookTime: data.cookTime });
     try {
       await updateRecipe(recipeID, { name: data.title, prepTime: data.prepTime, cookTime: data.cookTime });
-    } catch (e) {
-      console.error("Erreur mise à jour header", e);
+    } catch {
       setRecipe(previous);
     }
   };
 
-  // ── Ingredients ──────────────────────────────────────────────
   const handleAddIngredient = async (data: IngredientFormData) => {
     if (!recipe) return;
     const previous = recipe;
-    const newIngredient = {
-      recipeID,
+    const newIngredient: RecipeIngredient = {
       ingredientID: data.ingredientID,
-      quantity: data.quantity,
       unitID: data.unitID,
-      ingredient: { ingredientID: data.ingredientID, name: data.name } as any,
+      quantity: data.quantity,
+      ingredient: { ingredientID: data.ingredientID, name: data.name, category: '', calories: 0, unitDefault: data.unit },
       unit: { unitID: data.unitID, type: data.unit },
     };
     const updatedIngredients = [...recipe.ingredients, newIngredient];
     setRecipe({ ...recipe, ingredients: updatedIngredients });
     try {
       await updateRecipe(recipeID, { ingredients: toBackendIngredients(updatedIngredients) });
-    } catch (e) {
-      console.error("Erreur ajout ingrédient", e);
+    } catch {
       setRecipe(previous);
     }
   };
@@ -109,8 +102,7 @@ export default function RecipeScreen({ recipeID, onBack, onShare }: RecipeScreen
     setRecipe({ ...recipe, ingredients: updatedIngredients });
     try {
       await updateRecipe(recipeID, { ingredients: toBackendIngredients(updatedIngredients) });
-    } catch (e) {
-      console.error("Erreur modification ingrédient", e);
+    } catch {
       setRecipe(previous);
     }
   };
@@ -118,17 +110,15 @@ export default function RecipeScreen({ recipeID, onBack, onShare }: RecipeScreen
   const handleDeleteIngredient = async (index: number) => {
     if (!recipe) return;
     const previous = recipe;
-    const updatedIngredients = recipe.ingredients.filter((_, i) => i !== index);
+    const updatedIngredients = recipe.ingredients.filter((_: RecipeIngredient, i: number) => i !== index);
     setRecipe({ ...recipe, ingredients: updatedIngredients });
     try {
       await updateRecipe(recipeID, { ingredients: toBackendIngredients(updatedIngredients) });
-    } catch (e) {
-      console.error("Erreur suppression ingrédient", e);
+    } catch {
       setRecipe(previous);
     }
   };
 
-  // ── Steps ────────────────────────────────────────────────────
   const handleSaveSteps = async (steps: string[]) => {
     if (!recipe) return;
     const previous = recipe;
@@ -136,8 +126,7 @@ export default function RecipeScreen({ recipeID, onBack, onShare }: RecipeScreen
     setRecipe({ ...recipe, steps: updatedSteps });
     try {
       await updateRecipe(recipeID, { steps: updatedSteps });
-    } catch (e) {
-      console.error("Erreur mise à jour étapes", e);
+    } catch {
       setRecipe(previous);
     }
   };

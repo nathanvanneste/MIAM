@@ -138,4 +138,22 @@ export class UsersController {
   ) {
     return this.usersService.unsaveRecipe(req.user.userID, recipeID);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me/friends')
+  getMyFriends(@Req() req: AuthenticatedRequest) {
+    return this.usersService.findMyFriends(req.user.userID);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me/invitations')
+  getMyInvitations(@Req() req: AuthenticatedRequest) {
+    return this.usersService.findMyInvitations(req.user.userID);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me/sent-requests')
+  getMySentRequests(@Req() req: AuthenticatedRequest) {
+    return this.usersService.findMySentRequests(req.user.userID);
+  }
 }

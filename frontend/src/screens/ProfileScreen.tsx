@@ -1,6 +1,5 @@
-// src/screens/ProfileScreen.tsx
-import { useEffect, useState } from "react";
-import { Text, StyleSheet, ScrollView, Pressable } from "react-native";
+import { useEffect, useState, useCallback } from "react";
+import { Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import SearchBar from "../components/ui/SearchBar";
 import RecipeCard from "../components/ui/Recipe/RecipeCard";
 import { Colors } from "../constants/colors";
@@ -11,151 +10,124 @@ import Grid from "../components/ui/Recipe/RecipeGrid";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ProfileDescription from "../components/ui/Profile/ProfileDescription";
 import { router } from "expo-router";
-import {
-  getSignedAvatarUrl,
-  getSignedRecipePhotoUrl,
-} from "../services/storage.service";
+import { getSignedAvatarUrl, getSignedRecipePhotoUrl } from "../services/storage.service";
 import { getMe, type User } from "../services/users.service";
 import { getMyRecipes } from "../services/recipes.service";
+import { getMyRelations } from "../services/friends.service";
 
-type RecipeWithStyle = Recipe & {
-  color?: string;
-  icon?: string;
-};
+type RecipeWithStyle = Recipe & { color?: string; icon?: string };
 
 export default function ProfileScreen() {
-  const [search, setSearch] = useState("");
-  const [user, setUser] = useState<User | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [recipes, setRecipes] = useState<RecipeWithStyle[]>([]);
+    const [search, setSearch] = useState("");
+    const [user, setUser] = useState<User | null>(null);
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    const [recipes, setRecipes] = useState<RecipeWithStyle[]>([]);
+    const [friendsCount, setFriendsCount] = useState(0);
+    const [pendingCount, setPendingCount] = useState(0);
 
-  useEffect(() => {
-    async function loadProfile() {
-      try {
-        const me = await getMe();
-        setUser(me);
+    const loadProfile = useCallback(async () => {
+        try {
+            const [me, myRecipes, relations] = await Promise.all([
+                getMe(),
+                getMyRecipes(),
+                getMyRelations().catch(() => ({ friends: [], invitations: [], sentPending: [], myID: '' })),
+            ]);
 
-        if (me.avatar) {
-          const signedAvatarUrl = await getSignedAvatarUrl(me.avatar);
-          setAvatarUrl(signedAvatarUrl);
-        } else {
-          setAvatarUrl(null);
+            setUser(me);
+            setFriendsCount(relations.friends.length);
+            setPendingCount(relations.invitations.length);
+
+            if (me.avatar) {
+                getSignedAvatarUrl(me.avatar).then(setAvatarUrl).catch(() => {});
+            }
+
+            const recipesWithPhotos: RecipeWithStyle[] = await Promise.all(
+                myRecipes.map(async (recipe) => {
+                    if (!recipe.photo || recipe.photo.startsWith("http")) {
+                        return { ...recipe, color: "#FBE9DC" };
+                    }
+                    const signedUrl = await getSignedRecipePhotoUrl(recipe.photo).catch(() => null);
+                    return { ...recipe, photo: signedUrl ?? recipe.photo, color: "#FBE9DC" };
+                })
+            );
+            setRecipes(recipesWithPhotos);
+        } catch (error) {
+            console.error("Erreur chargement profil :", error);
         }
+    }, []);
 
-        const myRecipes = await getMyRecipes();
+    useEffect(() => { loadProfile() }, [loadProfile]);
 
-        const recipesWithSignedPhotos: RecipeWithStyle[] = await Promise.all(
-          myRecipes.map(async (recipe) => {
-            if (!recipe.photo) {
-              return {
-                ...recipe,
-                color: "#FBE9DC",
-              };
-            }
+    const filteredRecipes = recipes.filter((r) =>
+        r.name.toLowerCase().includes(search.toLowerCase())
+    );
 
-            if (recipe.photo.startsWith("http")) {
-              return {
-                ...recipe,
-                color: "#FBE9DC",
-              };
-            }
+    return (
+        <SafeAreaView style={styles.container}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+                <TouchableOpacity
+                    style={styles.settings}
+                    onPress={() => router.push("/settings")}
+                >
+                    <Settings size={26} color={Colors.textPrimary} />
+                </TouchableOpacity>
 
-            const signedPhotoUrl = await getSignedRecipePhotoUrl(recipe.photo);
+                <ProfileDescription
+                    avatarUrl={avatarUrl ?? "https://api.dicebear.com/7.x/adventurer/png?seed=default"}
+                    username={user?.pseudo ?? "Chargement..."}
+                    bio={user ? `${user.firstName} ${user.lastName}` : ""}
+                    recipesCount={recipes.length}
+                    friendsCount={friendsCount}
+                    pendingCount={pendingCount}
+                    onPressFriends={() => router.push("/friends")}
+                    onPressInvitations={() => router.push("/invitations")}
+                />
 
-            return {
-              ...recipe,
-              photo: signedPhotoUrl,
-              color: "#FBE9DC",
-            };
-          }),
-        );
+                <Text style={styles.sectionTitle}>Mes recettes</Text>
 
-        setRecipes(recipesWithSignedPhotos);
-      } catch (error) {
-        console.error("Erreur lors du chargement du profil :", error);
-      }
-    }
+                <SearchBar
+                    placeholder="Rechercher une recette..."
+                    value={search}
+                    onChangeText={setSearch}
+                    showFilter
+                    onFilterPress={() => {}}
+                    filterButtonColor={Colors.surface}
+                />
 
-    loadProfile();
-  }, []);
-
-  const filteredRecipes = recipes.filter((recipe) =>
-    recipe.name.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <Pressable
-          style={styles.settings}
-          onPress={() => router.push("/register")}
-        >
-          <Settings size={26} color={Colors.textPrimary} />
-        </Pressable>
-
-        <ProfileDescription
-          avatarUrl={
-            avatarUrl ??
-            "https://api.dicebear.com/7.x/adventurer/png?seed=default"
-          }
-          username={user?.pseudo ?? "Chargement..."}
-          bio={
-            user
-              ? `${user.firstName} ${user.lastName}`
-              : "Chargement du profil..."
-          }
-          recipesCount={recipes.length}
-          friendsCount={109}
-          pendingCount={3}
-        />
-
-        <Text style={styles.sectionTitle}>Mes recettes</Text>
-
-        <SearchBar
-          placeholder="Rechercher une recette..."
-          value={search}
-          onChangeText={setSearch}
-          showFilter
-          onFilterPress={() => console.log("Filtre pressé")}
-          filterButtonColor={Colors.surface}
-        />
-
-        <Grid>
-          {(cardWidth) =>
-            filteredRecipes.map((recipe) => (
-              <RecipeCard
-                key={recipe.recipeID}
-                recipe={recipe}
-                color={recipe.color}
-                icon={recipe.icon}
-                cardWidth={cardWidth}
-              />
-            ))
-          }
-        </Grid>
-      </ScrollView>
-    </SafeAreaView>
-  );
+                <Grid>
+                    {(cardWidth) =>
+                        filteredRecipes.map((recipe) => (
+                            <RecipeCard
+                                key={recipe.recipeID}
+                                recipe={recipe}
+                                color={recipe.color}
+                                icon={recipe.icon}
+                                cardWidth={cardWidth}
+                            />
+                        ))
+                    }
+                </Grid>
+            </ScrollView>
+        </SafeAreaView>
+    );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-
-  settings: {
-    position: "absolute",
-    top: 8,
-    right: 24,
-    zIndex: 10,
-  },
-
-  sectionTitle: {
-    fontSize: FontSize.xxxl,
-    fontWeight: FontWeight.bold,
-    color: Colors.textPrimary,
-    paddingHorizontal: 24,
-    marginBottom: 14,
-  },
+    container: {
+        flex: 1,
+        backgroundColor: Colors.background,
+    },
+    settings: {
+        position: "absolute",
+        top: 8,
+        right: 24,
+        zIndex: 10,
+    },
+    sectionTitle: {
+        fontSize: FontSize.xxxl,
+        fontWeight: FontWeight.bold,
+        color: Colors.textPrimary,
+        paddingHorizontal: 24,
+        marginBottom: 14,
+    },
 });
