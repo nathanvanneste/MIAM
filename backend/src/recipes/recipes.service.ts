@@ -2,6 +2,8 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
@@ -383,4 +385,56 @@ export class RecipesService {
       where: { reviewID },
     });
   }
+
+  async updateRecipePhoto(userID: string, recipeID: number, photo: string) {
+    const recipe = await this.prisma.recipe.findUnique({
+      where: {
+        recipeID,
+      },
+      select: {
+        recipeID: true,
+        creatorID: true,
+      },
+    });
+
+    if (!recipe) {
+      throw new NotFoundException('Recette introuvable.');
+    }
+
+    if (recipe.creatorID !== userID) {
+      throw new ForbiddenException(
+        "Vous ne pouvez modifier que les photos de vos propres recettes.",
+      );
+    }
+
+    const expectedPrefix = `${userID}/${recipeID}/`;
+
+    if (!photo.startsWith(expectedPrefix)) {
+      throw new BadRequestException(
+        "Le chemin de la photo ne correspond pas à la recette ou à l'utilisateur connecté.",
+      );
+    }
+
+    return this.prisma.recipe.update({
+      where: {
+        recipeID,
+      },
+      data: {
+        photo,
+      },
+    });
+  }
+
+  findMine(userID: string) {
+    return this.prisma.recipe.findMany({
+      where: {
+        creatorID: userID,
+      },
+      include: this.recipeInclude,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
 }
+

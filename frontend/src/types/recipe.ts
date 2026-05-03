@@ -5,12 +5,12 @@ import { CreateStepDTO } from './step'
 export type Recipe = {
     recipeID: number;
     name: string;
-    dateCreation: Date;
+    createdAt: string;
     prepTime: number;
     cookTime: number;
-    photo?: string;
+    photo?: string | null;
     portion: number;
-    description: string;
+    description?: string | null;
     recipeIngredients: RecipeIngredient[]
 
 };
