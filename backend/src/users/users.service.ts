@@ -59,6 +59,14 @@ private readonly include = {
         lastName: dto.lastName,
         pseudo: dto.pseudo,
         avatar: dto.avatar,
+        shoppingList: {
+          create: {
+            name: `Liste de ${dto.pseudo}`,
+          },
+        },
+      },
+      include: {
+        shoppingList: true,
       },
     });
   }

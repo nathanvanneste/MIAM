@@ -14,20 +14,27 @@ export class GroupsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(userID: string, createGroupDto: CreateGroupDto) {
-    const { memberIDs, ...groupData } = createGroupDto;
+    const { memberIDs = [], ...groupData } = createGroupDto;
+
+    const uniqueMemberIDs = Array.from(new Set([userID, ...memberIDs]));
 
     return this.prisma.groups.create({
       data: {
         ...groupData,
-        members: memberIDs
-          ? {
-              create: memberIDs.map((userID) => ({
-                user: {
-                  connect: { userID },
-                },
-              })),
-            }
-          : undefined,
+
+        members: {
+          create: uniqueMemberIDs.map((memberID) => ({
+            user: {
+              connect: { userID: memberID },
+            },
+          })),
+        },
+
+        shoppingList: {
+          create: {
+            name: `Liste - ${groupData.name}`,
+          },
+        },
       },
       include: {
         members: {
