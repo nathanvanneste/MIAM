@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  ForbiddenException
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateShoppingListDto } from './dto/create-shopping-list.dto';
@@ -24,7 +25,7 @@ export class ShoppingListsService {
     group: true,
   };
 
-  async create(createShoppingListDto: CreateShoppingListDto) {
+  async create(userID: string, createShoppingListDto: CreateShoppingListDto) {
     return this.prisma.shoppingList.create({
       data: createShoppingListDto,
       include: this.include,
@@ -144,4 +145,100 @@ export class ShoppingListsService {
       },
     });
   }
+
+  async findMine(userID: string) {
+    const shoppingList = await this.prisma.shoppingList.findUnique({
+      where: {
+        userID,
+      },
+      include: {
+        items: {
+          include: {
+            ingredient: true,
+            unit: true,
+          },
+        },
+      },
+    });
+
+    if (!shoppingList) {
+      throw new NotFoundException(
+        "Liste de courses personnelle introuvable pour cet utilisateur.",
+      );
+    }
+
+    return shoppingList;
+  }
+
+  async importRecipe(userID: string, listID: number, recipeID: number) {
+    // Récupère la liste ciblée avec son groupe pour vérifier les droits d'accès.
+    const shoppingList = await this.prisma.shoppingList.findUnique({
+      where: {
+        listID,
+      },
+      include: {
+        group: {
+          include: {
+            members: true,
+          },
+        },
+      },
+    });
+
+    if (!shoppingList) {
+      throw new NotFoundException('Liste de courses introuvable.');
+    }
+
+    // Autorise seulement le propriétaire de la liste ou un membre du groupe lié.
+    const isPersonalListOwner = shoppingList.userID === userID;
+
+    const isGroupMember =
+      shoppingList.group?.members.some((member) => member.userID === userID) ??
+      false;
+
+    if (!isPersonalListOwner && !isGroupMember) {
+      throw new ForbiddenException(
+        "Vous n'avez pas accès à cette liste de courses.",
+      );
+    }
+
+    // Récupère la recette avec ses ingrédients pour les convertir en items.
+    const recipe = await this.prisma.recipe.findUnique({
+      where: {
+        recipeID,
+      },
+      include: {
+        ingredients: {
+          include: {
+            ingredient: true,
+            unit: true,
+          },
+        },
+      },
+    });
+
+    if (!recipe) {
+      throw new NotFoundException('Recette introuvable.');
+    }
+
+    if (recipe.ingredients.length === 0) {
+      return this.findOne(listID);
+    }
+
+    // Ajoute chaque ingrédient de la recette dans la liste de courses.
+    await this.prisma.shoppingItem.createMany({
+      data: recipe.ingredients.map((recipeIngredient) => ({
+        listID,
+        name: recipeIngredient.ingredient.name,
+        ingredientID: recipeIngredient.ingredientID,
+        unitID: recipeIngredient.unitID,
+        quantity: recipeIngredient.quantity,
+        checked: false,
+      })),
+    });
+
+    // Retourne la liste mise à jour pour rafraîchir le frontend.
+    return this.findOne(listID);
+  }
+
 }

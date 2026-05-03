@@ -7,13 +7,18 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { ShoppingListsService } from './shopping-lists.service';
 import { CreateShoppingListDto } from './dto/create-shopping-list.dto';
 import { UpdateShoppingListDto } from './dto/update-shopping-list.dto';
 import { CreateShoppingItemDto } from './dto/create-shopping-item.dto';
 import { UpdateShoppingItemDto } from './dto/update-shopping-item.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../auth/types/authenticated-request.type';
 
+@UseGuards(JwtAuthGuard)
 @Controller('shopping-lists')
 export class ShoppingListsController {
   constructor(
@@ -21,8 +26,13 @@ export class ShoppingListsController {
   ) {}
 
   @Post()
-  create(@Body() dto: CreateShoppingListDto) {
-    return this.shoppingListsService.create(dto);
+  create(@Req() req: AuthenticatedRequest, @Body() dto: CreateShoppingListDto) {
+    return this.shoppingListsService.create(req.user.userID, dto);
+  }
+
+  @Get('me')
+  findMine(@Req() req: AuthenticatedRequest) {
+    return this.shoppingListsService.findMine(req.user.userID);
   }
 
   @Get()
@@ -54,6 +64,19 @@ export class ShoppingListsController {
     @Body() dto: CreateShoppingItemDto,
   ) {
     return this.shoppingListsService.addItem(listID, dto);
+  }
+
+  @Post(':listID/import-recipe/:recipeID')
+  importRecipe(
+    @Req() req: AuthenticatedRequest,
+    @Param('listID', ParseIntPipe) listID: number,
+    @Param('recipeID', ParseIntPipe) recipeID: number,
+  ) {
+    return this.shoppingListsService.importRecipe(
+      req.user.userID,
+      listID,
+      recipeID,
+    );
   }
 
   @Patch('items/:itemID')

@@ -7,20 +7,30 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { AddGroupMemberDto } from './dto/add-group-member.dto';
 import { AddGroupRecipeDto } from './dto/add-group-recipe.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../auth/types/authenticated-request.type';
 
+@UseGuards(JwtAuthGuard)
 @Controller('groups')
 export class GroupsController {
   constructor(private readonly groupsService: GroupsService) {}
 
   @Post()
-  create(@Body() createGroupDto: CreateGroupDto) {
-    return this.groupsService.create(createGroupDto);
+  create(@Req() req: AuthenticatedRequest, @Body() createGroupDto: CreateGroupDto) {
+    return this.groupsService.create(req.user.userID, createGroupDto);
+  }
+
+  @Get('me')
+  findMine(@Req() req: AuthenticatedRequest) {
+    return this.groupsService.findMine(req.user.userID);
   }
 
   @Get()
