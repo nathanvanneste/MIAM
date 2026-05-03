@@ -11,16 +11,9 @@ export type Recipe = {
     photo?: string | null;
     portion: number;
     description?: string | null;
-<<<<<<< HEAD
-    price?: number | null;
-    nutritionalScore?: number | null;
-    creatorID: string;
-    recipeIngredients: RecipeIngredient[];
-=======
     ingredients: RecipeIngredient[];
     steps: Step[];
 
->>>>>>> origin/elodie_recipeScreen
 };
 
 export type CreateRecipeDTO = {
