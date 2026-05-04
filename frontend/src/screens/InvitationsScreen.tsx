@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native'
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator, Image, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ArrowLeft, Check, X } from 'lucide-react-native'
 import { router } from 'expo-router'
@@ -29,6 +29,7 @@ function Avatar({ user }: { user: InvitationWithUser['user'] }) {
 export default function InvitationsScreen() {
     const [invitations, setInvitations] = useState<InvitationWithUser[]>([])
     const [loading, setLoading] = useState(true)
+    const [refreshing, setRefreshing] = useState(false)
     const [processing, setProcessing] = useState<string | null>(null)
 
     const load = useCallback(async () => {
@@ -39,8 +40,11 @@ export default function InvitationsScreen() {
         } catch {
         } finally {
             setLoading(false)
+            setRefreshing(false)
         }
     }, [])
+
+    const onRefresh = useCallback(() => { setRefreshing(true); load() }, [load])
 
     useEffect(() => { load() }, [load])
 
@@ -87,6 +91,7 @@ export default function InvitationsScreen() {
                     data={invitations}
                     keyExtractor={inv => inv.requesterID}
                     contentContainerStyle={styles.list}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
                     ListEmptyComponent={
                         <View style={styles.emptyState}>
                             <Text style={styles.emptyTitle}>Aucune invitation en attente</Text>

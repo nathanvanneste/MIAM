@@ -1,49 +1,95 @@
-import { useState, useEffect } from 'react'
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal, KeyboardAvoidingView, Platform } from 'react-native'
+import { useState, useEffect, useCallback } from 'react'
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal, KeyboardAvoidingView, Platform, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Trash2, Check, ChevronDown, ChevronUp, BookOpen } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '@/src/constants'
 import { ShoppingList, ShoppingItem } from '@/src/types/shoppingList'
-import { toggleItem, removeItem, addItem, updateItem, getMyList, getMyGroups } from '@/src/services/shoppingList.service'
+import { toggleItem, removeItem, addItem, updateItem, getMyList, getMyGroups, getList } from '@/src/services/shoppingList.service'
+import { supabase } from '@/src/config/supabase'
 import AddShoppingItem from '@/src/components/features/shopping/AddShoppingItem'
 import ImportRecipeModal from '@/src/components/features/shopping/ImportRecipeModal'
 
 export default function ShoppingListScreen() {
     const [lists, setLists] = useState<ShoppingList[]>([])
     const [loading, setLoading] = useState(true)
+    const [refreshing, setRefreshing] = useState(false)
     const [selectedListID, setSelectedListID] = useState<number>(0)
     const [showImportModal, setShowImportModal] = useState(false)
     const [showListPicker, setShowListPicker] = useState(false)
     const [checkedExpanded, setCheckedExpanded] = useState(false)
 
-    useEffect(() => {
-        const fetchLists = async () => {
-            try {
-                const [myListResult, myGroupsResult] = await Promise.allSettled([
-                    getMyList(),
-                    getMyGroups(),
-                ])
-
-                const allLists: ShoppingList[] = []
-
-                if (myListResult.status === 'fulfilled') {
-                    allLists.push(myListResult.value)
-                }
-                if (myGroupsResult.status === 'fulfilled') {
-                    const groupLists = myGroupsResult.value
-                        .filter((g: any) => g.shoppingList)
-                        .map((g: any) => ({ ...g.shoppingList, name: g.name }))
-                    allLists.push(...groupLists)
-                }
-
-                setLists(allLists)
-                if (allLists.length > 0) setSelectedListID(allLists[0].listID)
-            } finally {
-                setLoading(false)
+    const fetchLists = useCallback(async () => {
+        try {
+            const [myListResult, myGroupsResult] = await Promise.allSettled([
+                getMyList(),
+                getMyGroups(),
+            ])
+            const allLists: ShoppingList[] = []
+            if (myListResult.status === 'fulfilled') allLists.push(myListResult.value)
+            if (myGroupsResult.status === 'fulfilled') {
+                const groupLists = myGroupsResult.value
+                    .filter((g: any) => g.shoppingList)
+                    .map((g: any) => ({ ...g.shoppingList, name: g.name }))
+                allLists.push(...groupLists)
             }
+            setLists(allLists)
+            // Preserve current selection on refresh, set first list on initial load
+            setSelectedListID(prev => prev !== 0 ? prev : (allLists[0]?.listID ?? 0))
+        } finally {
+            setLoading(false)
+            setRefreshing(false)
         }
-        fetchLists()
     }, [])
+
+    useEffect(() => { fetchLists() }, [fetchLists])
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true)
+        fetchLists()
+    }, [fetchLists])
+
+    // Supabase Realtime : synchronisation en temps réel des items de la liste active
+    useEffect(() => {
+        if (!selectedListID) return
+
+        const channel = supabase
+            .channel(`shopping-items-${selectedListID}`)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'ShoppingItem',
+                filter: `listID=eq.${selectedListID}`,
+            }, payload => {
+                if (payload.eventType === 'UPDATE') {
+                    const updated = payload.new as any
+                    setLists(prev => prev.map(l =>
+                        l.listID === selectedListID
+                            ? { ...l, items: l.items.map(i => i.itemID === updated.itemID ? { ...i, checked: updated.checked } : i) }
+                            : l
+                    ))
+                } else if (payload.eventType === 'DELETE') {
+                    const deleted = payload.old as any
+                    setLists(prev => prev.map(l =>
+                        l.listID === selectedListID
+                            ? { ...l, items: l.items.filter(i => i.itemID !== deleted.itemID) }
+                            : l
+                    ))
+                } else if (payload.eventType === 'INSERT') {
+                    const inserted = payload.new as any
+                    // Re-fetch pour avoir les données complètes (ingredient, unit)
+                    // Si l'item existe déjà (ajout local optimiste), le re-fetch est un no-op
+                    getList(selectedListID)
+                        .then(refreshed => setLists(prev => prev.map(l =>
+                            l.listID === selectedListID ? { ...l, items: refreshed.items } : l
+                        )))
+                        .catch(() => {})
+                    void inserted
+                }
+            })
+            .subscribe()
+
+        return () => { supabase.removeChannel(channel) }
+    }, [selectedListID])
 
     if (loading) return (
         <SafeAreaView style={styles.container}>
@@ -242,7 +288,11 @@ export default function ShoppingListScreen() {
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
-                <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    contentContainerStyle={styles.list}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
+                >
 
                     {unchecked.length === 0 && checked.length === 0 && (
                         <Text style={styles.emptyList}>La liste est vide.</Text>
