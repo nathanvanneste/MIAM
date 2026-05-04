@@ -25,4 +25,5 @@ export const Colors = {
 
     primaryButton: "#FFAC40",
     primaryDarkButton: "#FF8A1F",
+    secondaryDarkButton: "#B4582A",
 }

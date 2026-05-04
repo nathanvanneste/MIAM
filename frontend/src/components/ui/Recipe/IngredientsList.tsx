@@ -6,6 +6,7 @@ import { Colors } from "@/src/constants/colors";
 import { FontSize, FontWeight } from "@/src/constants/typography";
 import { RecipeIngredient } from "@/src/types/recipeIngredient";
 import IngredientFormSheet, { IngredientFormData } from "./IngredientFormSheet";
+import OutlineButton from "@/src/components/ui/OutlineButton";
 
 type IngredientsListProps = {
   ingredients: RecipeIngredient[];
@@ -31,33 +32,20 @@ export default function IngredientsList({
   onDeleteIngredient,
 }: IngredientsListProps) {
   const ratio = portions / basePortions;
-
   const scaled = ingredients.map((ing) => ({
     ...ing,
     quantity: Math.round(ing.quantity * ratio * 10) / 10,
   }));
 
   const isEditable = !!(onAddIngredient || onEditIngredient || onDeleteIngredient);
-
   const [sheetVisible, setSheetVisible] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
-  const openAdd = () => {
-    setEditingIndex(null);
-    setSheetVisible(true);
-  };
-
-  const openEdit = (index: number) => {
-    setEditingIndex(index);
-    setSheetVisible(true);
-  };
-
+  const openAdd = () => { setEditingIndex(null); setSheetVisible(true); };
+  const openEdit = (index: number) => { setEditingIndex(index); setSheetVisible(true); };
   const handleSheetSave = (data: IngredientFormData) => {
-    if (editingIndex !== null) {
-      onEditIngredient?.(editingIndex, data);
-    } else {
-      onAddIngredient?.(data);
-    }
+    if (editingIndex !== null) onEditIngredient?.(editingIndex, data);
+    else onAddIngredient?.(data);
   };
 
   return (
@@ -75,17 +63,6 @@ export default function IngredientsList({
         </View>
       </View>
 
-      {/* Add button */}
-      {isEditable && (
-        <Pressable
-          style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
-          onPress={openAdd}
-        >
-          <Plus size={16} color={Colors.primaryButton} strokeWidth={2.5} />
-          <Text style={styles.addButtonText}>Ajouter un ingrédient</Text>
-        </Pressable>
-      )}
-
       {/* Section title */}
       <Text style={styles.sectionTitle}>Ingrédients</Text>
 
@@ -96,12 +73,10 @@ export default function IngredientsList({
             <Text style={styles.quantity}>
               {ing.quantity > 0 ? ing.quantity : ""}
             </Text>
-
             <Text style={styles.ingredientText} numberOfLines={1}>
               {ing.unit?.type ? `${ing.unit.type} ` : ""}
               {ing.ingredient.name}
             </Text>
-
             {isEditable ? (
               <View style={styles.actions}>
                 <Pressable onPress={() => openEdit(index)} hitSlop={8} style={styles.actionButton}>
@@ -117,6 +92,16 @@ export default function IngredientsList({
           </View>
         ))}
       </View>
+
+      {/* Add button — below list */}
+      {isEditable && (
+        <OutlineButton
+          title="Ajouter un ingrédient"
+          onPress={openAdd}
+          color={Colors.primaryLight}
+          backgroundColor={Colors.cardLight}
+        />
+      )}
 
       {/* Categories */}
       {categories.length > 0 && (
@@ -149,7 +134,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-
   portionsSelector: {
     flexDirection: "row",
     alignItems: "center",
@@ -161,51 +145,22 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 14,
   },
-
-  portionButton: {
-    padding: 2,
-  },
-
+  portionButton: { padding: 2 },
   portionsText: {
     fontSize: FontSize.md,
     fontWeight: FontWeight.medium,
     color: Colors.textPrimary,
   },
-
-  addButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderWidth: 1.5,
-    borderColor: Colors.primaryButton,
-    borderRadius: 12,
-    paddingVertical: 12,
-    marginBottom: 20,
-  },
-
-  addButtonPressed: {
-    backgroundColor: Colors.cardLight,
-  },
-
-  addButtonText: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
-    color: Colors.primaryButton,
-  },
-
   sectionTitle: {
     fontSize: FontSize.md,
     fontWeight: FontWeight.semibold,
     color: Colors.textPrimary,
     marginBottom: 10,
   },
-
   list: {
     gap: 6,
-    marginBottom: 28,
+    marginBottom: 16,
   },
-
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -215,7 +170,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     gap: 8,
   },
-
   quantity: {
     width: 28,
     fontSize: FontSize.md,
@@ -223,47 +177,38 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     textAlign: "right",
   },
-
   ingredientText: {
     flex: 1,
     fontSize: FontSize.md,
     color: Colors.textPrimary,
     lineHeight: 22,
   },
-
   actions: {
     flexDirection: "row",
     gap: 12,
     alignItems: "center",
   },
-
-  actionButton: {
-    padding: 2,
-  },
-
+  actionButton: { padding: 2 },
   bullet: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: Colors.textPrimary,
   },
-
   categoriesSection: {
     gap: 10,
+    marginTop: 20,
   },
-
   categoriesLabel: {
     fontSize: FontSize.md,
     color: Colors.textPrimary,
     fontWeight: FontWeight.medium,
   },
-
   categoriesRow: {
     flexDirection: "row",
     gap: 10,
     flexWrap: "wrap",
   },
-
   categoryTag: {
     flexDirection: "row",
     alignItems: "center",
@@ -273,7 +218,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
   },
-
   categoryText: {
     fontSize: FontSize.sm,
     color: Colors.surface,
