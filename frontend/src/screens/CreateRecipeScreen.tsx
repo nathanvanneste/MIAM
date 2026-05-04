@@ -111,6 +111,7 @@ export default function CreateRecipeScreen() {
                             placeholderTextColor={Colors.textSecondary}
                             value={form.name}
                             onChangeText={(text) => setForm({ ...form, name: text })}
+                            maxLength={60}
                             multiline={false}
                         />
                     </View>
@@ -141,7 +142,10 @@ export default function CreateRecipeScreen() {
                                         placeholder="0"
                                         placeholderTextColor={Colors.textSecondary}
                                         keyboardType="numeric"
-                                        onChangeText={(text) => setForm({ ...form, prepTime: parseInt(text) || 0 })}
+                                        value={form.prepTime > 0 ? String(form.prepTime) : ''}
+                                        onChangeText={(text) => setForm(f => ({ ...f, prepTime: parseInt(text) || 0 }))}
+                                        onBlur={() => setForm(f => ({ ...f, prepTime: Math.min(600, Math.max(0, f.prepTime)) }))}
+                                        maxLength={3}
                                         multiline={false}
                                     />
                                     <Text style={styles.timeUnit}>min</Text>
@@ -158,7 +162,10 @@ export default function CreateRecipeScreen() {
                                         placeholder="0"
                                         placeholderTextColor={Colors.textSecondary}
                                         keyboardType="numeric"
-                                        onChangeText={(text) => setForm({ ...form, cookTime: parseInt(text) || 0 })}
+                                        value={form.cookTime > 0 ? String(form.cookTime) : ''}
+                                        onChangeText={(text) => setForm(f => ({ ...f, cookTime: parseInt(text) || 0 }))}
+                                        onBlur={() => setForm(f => ({ ...f, cookTime: Math.min(600, Math.max(0, f.cookTime)) }))}
+                                        maxLength={3}
                                         multiline={false}
                                     />
                                     <Text style={styles.timeUnit}>min</Text>
@@ -188,9 +195,14 @@ export default function CreateRecipeScreen() {
                             placeholderTextColor={Colors.textSecondary}
                             multiline
                             numberOfLines={4}
-                            onChangeText={(text) => setForm({ ...form, description: text })}
+                            value={form.description ?? ''}
+                            onChangeText={(text) => setForm(f => ({ ...f, description: text }))}
+                            maxLength={300}
                             textAlignVertical="top"
                         />
+                        {(form.description?.length ?? 0) > 0 && (
+                            <Text style={styles.charCount}>{form.description?.length ?? 0}/300</Text>
+                        )}
 
                         {/* Bouton */}
                         <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.85}>
@@ -326,6 +338,13 @@ const styles = StyleSheet.create({
         fontSize: FontSize.md,
         color: Colors.textPrimary,
         minHeight: 100,
+    },
+
+    charCount: {
+        fontSize: FontSize.xs,
+        color: Colors.textSecondary,
+        textAlign: 'right',
+        marginTop: 4,
     },
 
     // Categories placeholder

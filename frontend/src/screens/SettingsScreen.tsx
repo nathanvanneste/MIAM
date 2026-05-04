@@ -176,6 +176,7 @@ export default function SettingsScreen() {
                             onChangeText={setFirstName}
                             placeholder="Prénom"
                             placeholderTextColor={Colors.textSecondary}
+                            maxLength={30}
                             multiline={false}
                         />
                     </View>
@@ -188,6 +189,7 @@ export default function SettingsScreen() {
                             onChangeText={setLastName}
                             placeholder="Nom"
                             placeholderTextColor={Colors.textSecondary}
+                            maxLength={30}
                             multiline={false}
                         />
                     </View>
@@ -201,6 +203,7 @@ export default function SettingsScreen() {
                             placeholder="pseudo"
                             placeholderTextColor={Colors.textSecondary}
                             autoCapitalize="none"
+                            maxLength={20}
                             multiline={false}
                         />
                     </View>

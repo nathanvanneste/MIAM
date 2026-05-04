@@ -186,9 +186,14 @@ export default function IngredientFormSheet({
                 style={styles.input}
                 value={quantity}
                 onChangeText={setQuantity}
+                onBlur={() => {
+                  const v = parseFloat(quantity) || 0
+                  setQuantity(String(Math.min(9999, Math.max(0, v))))
+                }}
                 placeholder="Ex. : 100"
                 placeholderTextColor={Colors.textSecondary}
                 keyboardType="decimal-pad"
+                maxLength={7}
               />
             </View>
             <View style={styles.unitField}>

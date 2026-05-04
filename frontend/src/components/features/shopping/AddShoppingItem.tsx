@@ -119,6 +119,7 @@ export default function AddShoppingItem({ listID, onAdd }: Props) {
                     onChangeText={handleSearch}
                     onSubmitEditing={handleAdd}
                     returnKeyType="done"
+                    maxLength={50}
                     multiline={false}
                     numberOfLines={1}
                 />
@@ -128,7 +129,12 @@ export default function AddShoppingItem({ listID, onAdd }: Props) {
                     placeholderTextColor={Colors.textSecondary}
                     value={quantity}
                     onChangeText={setQuantity}
+                    onBlur={() => {
+                        const v = parseFloat(quantity)
+                        if (!isNaN(v)) setQuantity(String(Math.min(9999, Math.max(0, v))))
+                    }}
                     keyboardType="numeric"
+                    maxLength={7}
                     multiline={false}
                 />
                 <TouchableOpacity

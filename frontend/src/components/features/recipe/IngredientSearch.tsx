@@ -175,7 +175,13 @@ export default function IngredientSearch({ onChange }: Props) {
                             value={staged.quantity}
                             keyboardType="numeric"
                             onChangeText={(text) => setStaged(s => s ? { ...s, quantity: text } : s)}
+                            onBlur={() => setStaged(s => {
+                                if (!s) return s
+                                const v = Math.min(9999, Math.max(0, parseFloat(s.quantity) || 0))
+                                return { ...s, quantity: String(v) }
+                            })}
                             selectTextOnFocus
+                            maxLength={7}
                             multiline={false}
                         />
                         <TouchableOpacity
@@ -206,7 +212,9 @@ export default function IngredientSearch({ onChange }: Props) {
                                     value={String(item.quantity)}
                                     keyboardType="numeric"
                                     onChangeText={(text) => handleQuantityChange(id, text)}
+                                    onBlur={() => handleQuantityChange(id, String(Math.min(9999, Math.max(0, item.quantity))))}
                                     selectTextOnFocus
+                                    maxLength={7}
                                     multiline={false}
                                 />
                                 <TouchableOpacity

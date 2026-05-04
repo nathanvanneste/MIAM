@@ -98,6 +98,7 @@ export default function EditHeaderSheet({
             onChangeText={setLocalTitle}
             placeholder="Nom de la recette"
             placeholderTextColor={Colors.textSecondary}
+            maxLength={60}
           />
 
           {/* Description */}
@@ -110,7 +111,11 @@ export default function EditHeaderSheet({
             placeholderTextColor={Colors.textSecondary}
             multiline
             numberOfLines={3}
+            maxLength={300}
           />
+          {localDescription.length > 0 && (
+            <Text style={styles.charCount}>{localDescription.length}/300</Text>
+          )}
 
           {/* Temps */}
           <View style={styles.timeRow}>
@@ -120,9 +125,11 @@ export default function EditHeaderSheet({
                 style={styles.input}
                 value={localPrep}
                 onChangeText={setLocalPrep}
+                onBlur={() => setLocalPrep(String(Math.min(600, Math.max(0, parseInt(localPrep) || 0))))}
                 keyboardType="numeric"
                 placeholder="0"
                 placeholderTextColor={Colors.textSecondary}
+                maxLength={3}
               />
             </View>
             <View style={styles.timeField}>
@@ -131,9 +138,11 @@ export default function EditHeaderSheet({
                 style={styles.input}
                 value={localCook}
                 onChangeText={setLocalCook}
+                onBlur={() => setLocalCook(String(Math.min(600, Math.max(0, parseInt(localCook) || 0))))}
                 keyboardType="numeric"
                 placeholder="0"
                 placeholderTextColor={Colors.textSecondary}
+                maxLength={3}
               />
             </View>
           </View>
@@ -225,4 +234,12 @@ const styles = StyleSheet.create({
   },
 
   timeField: { flex: 1 },
+
+  charCount: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    textAlign: "right",
+    marginTop: 2,
+    marginBottom: 12,
+  },
 });

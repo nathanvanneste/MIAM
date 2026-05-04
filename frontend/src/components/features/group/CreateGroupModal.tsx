@@ -74,6 +74,7 @@ export default function CreateGroupModal({ visible, onClose, onCreated }: Props)
                         value={name}
                         onChangeText={setName}
                         autoFocus
+                        maxLength={40}
                         multiline={false}
                     />
 
