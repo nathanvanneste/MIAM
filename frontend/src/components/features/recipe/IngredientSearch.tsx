@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native'
 import { X, ChevronDown, Plus } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
 import { Ingredient } from '@/src/types/ingredient'
 import { searchIngredients } from '@/src/services/ingredients.service'
+import { normalize } from '@/src/utils/search'
 import { UNITS } from '@/src/constants/units'
 import { CreateRecipeIngredientDTO } from '@/src/types/recipeIngredient'
 
@@ -45,7 +46,13 @@ export default function IngredientSearch({ onChange }: Props) {
         if (text.length < 1) { setSuggestions([]); return }
         try {
             const results = await searchIngredients(text)
+            const q = normalize(text)
             const filtered = results.filter(i => !selected.find(s => s.ingredient.ingredientID === i.ingredientID))
+            filtered.sort((a, b) => {
+                const aStarts = normalize(a.name).startsWith(q)
+                const bStarts = normalize(b.name).startsWith(q)
+                return aStarts === bStarts ? 0 : aStarts ? -1 : 1
+            })
             setSuggestions(filtered)
         } catch {
             setSuggestions([])
@@ -122,7 +129,11 @@ export default function IngredientSearch({ onChange }: Props) {
 
             {/* Suggestions */}
             {suggestions.length > 0 && (
-                <View style={styles.dropdown}>
+                <ScrollView
+                    style={styles.dropdown}
+                    keyboardShouldPersistTaps="always"
+                    nestedScrollEnabled
+                >
                     {suggestions.map(ingredient => (
                         <TouchableOpacity
                             key={String(ingredient.ingredientID)}
@@ -133,7 +144,7 @@ export default function IngredientSearch({ onChange }: Props) {
                             <Text style={styles.suggestionUnit}>{ingredient.unitDefault}</Text>
                         </TouchableOpacity>
                     ))}
-                </View>
+                </ScrollView>
             )}
 
             {/* Staging — configurer qty/unité avant d'ajouter */}
@@ -255,6 +266,7 @@ const styles = StyleSheet.create({
         borderColor: Colors.border,
         marginTop: Spacing.xs,
         overflow: 'hidden',
+        maxHeight: 240,
     },
     suggestion: {
         flexDirection: 'row',

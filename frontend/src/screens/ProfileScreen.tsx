@@ -14,6 +14,7 @@ import { getSignedAvatarUrl } from "../services/storage.service";
 import { getMe, getMySavedRecipes, type User, type SavedRecipeItem } from "../services/users.service";
 import { getMyRecipes } from "../services/recipes.service";
 import { getMyRelations } from "../services/friends.service";
+import { sortByMatch } from "../utils/search";
 
 export default function ProfileScreen() {
     const [search, setSearch] = useState("");
@@ -53,13 +54,8 @@ export default function ProfileScreen() {
     useEffect(() => { loadProfile() }, [loadProfile]);
     const onRefresh = useCallback(() => { setRefreshing(true); loadProfile(); }, [loadProfile]);
 
-    const filteredRecipes = recipes.filter((r) =>
-        r.name.toLowerCase().includes(search.toLowerCase())
-    );
-
-    const filteredSaved = savedRecipes.filter((s) =>
-        s.recipe.name.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredRecipes = sortByMatch(recipes, search, r => r.name);
+    const filteredSaved = sortByMatch(savedRecipes, search, s => s.recipe.name);
 
     return (
         <SafeAreaView style={styles.container}>

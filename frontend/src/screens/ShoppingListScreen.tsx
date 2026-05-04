@@ -291,6 +291,7 @@ export default function ShoppingListScreen() {
                 <ScrollView
                     contentContainerStyle={styles.list}
                     showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
                 >
 

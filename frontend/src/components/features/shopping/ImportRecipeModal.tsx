@@ -8,6 +8,7 @@ import { RecipeDetail, getMyRecipes } from '@/src/services/recipes.service'
 import { getMySavedRecipes } from '@/src/services/users.service'
 import { addItem, updateItem, getList } from '@/src/services/shoppingList.service'
 import { getSignedRecipePhotoUrl } from '@/src/services/storage.service'
+import { sortByMatch } from '@/src/utils/search'
 
 type Props = {
     visible: boolean
@@ -65,9 +66,7 @@ export default function ImportRecipeModal({ visible, listID, currentItems, onClo
             .finally(() => setLoading(false))
     }, [visible])
 
-    const filtered = recipes.filter(r =>
-        r.name.toLowerCase().includes(search.toLowerCase())
-    )
+    const filtered = sortByMatch(recipes, search, r => r.name)
 
     const toggleSelect = (recipeID: number) => {
         setSelected(prev => {
@@ -213,6 +212,7 @@ export default function ImportRecipeModal({ visible, listID, currentItems, onClo
                         data={filtered}
                         keyExtractor={r => String(r.recipeID)}
                         contentContainerStyle={styles.list}
+                        keyboardShouldPersistTaps="handled"
                         renderItem={renderRecipe}
                         ListEmptyComponent={
                             <Text style={styles.empty}>Aucune recette trouvée.</Text>

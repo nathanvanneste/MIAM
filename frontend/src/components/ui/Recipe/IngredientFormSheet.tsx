@@ -11,6 +11,7 @@ import {
   Platform,
   TouchableWithoutFeedback,
   FlatList,
+  ScrollView,
 } from "react-native";
 import { X, Search, ChevronDown, Check } from "lucide-react-native";
 import { Colors } from "../../../constants/colors";
@@ -18,6 +19,7 @@ import { FontSize, FontWeight } from "../../../constants/typography";
 import { RecipeIngredient } from "../../../types/recipeIngredient";
 import { Ingredient } from "../../../types/ingredient";
 import { searchIngredients } from "../../../services/ingredients.service";
+import { normalize } from "../../../utils/search";
 import { UNITS } from "../../../constants/units";
 
 export type IngredientFormData = {
@@ -69,6 +71,12 @@ export default function IngredientFormSheet({
     if (text.length < 1) { setSuggestions([]); return; }
     try {
       const results = await searchIngredients(text);
+      const q = normalize(text);
+      results.sort((a, b) => {
+        const aStarts = normalize(a.name).startsWith(q);
+        const bStarts = normalize(b.name).startsWith(q);
+        return aStarts === bStarts ? 0 : aStarts ? -1 : 1;
+      });
       setSuggestions(results);
     } catch {
       setSuggestions([]);
@@ -156,14 +164,18 @@ export default function IngredientFormSheet({
 
           {/* Suggestions */}
           {suggestions.length > 0 && (
-            <View style={styles.dropdown}>
-              {suggestions.slice(0, 5).map((ing) => (
+            <ScrollView
+              style={styles.dropdown}
+              keyboardShouldPersistTaps="always"
+              nestedScrollEnabled
+            >
+              {suggestions.slice(0, 7).map((ing) => (
                 <Pressable key={ing.ingredientID} style={styles.suggestion} onPress={() => handleSelectSuggestion(ing)}>
                   <Text style={styles.suggestionText}>{ing.name}</Text>
                   <Text style={styles.suggestionUnit}>{ing.unitDefault}</Text>
                 </Pressable>
               ))}
-            </View>
+            </ScrollView>
           )}
 
           {/* Quantity + Unit */}
@@ -303,6 +315,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     marginBottom: 16,
     overflow: "hidden",
+    maxHeight: 220,
   },
 
   suggestion: {

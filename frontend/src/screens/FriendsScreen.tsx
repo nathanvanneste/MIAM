@@ -13,6 +13,7 @@ import {
     type MyRelations,
 } from '@/src/services/friends.service'
 import UserAvatar from '@/src/components/ui/UserAvatar'
+import { normalize } from '@/src/utils/search'
 
 export default function FriendsScreen() {
     const [relations, setRelations] = useState<MyRelations | null>(null)
@@ -48,10 +49,16 @@ export default function FriendsScreen() {
         setSearching(true)
         try {
             const found = await searchUsers(text.trim())
-            // Exclude self and existing friends
             const friendIDs = new Set(relations?.friends.map(f => f.userID) ?? [])
             const myID = relations?.myID ?? ''
-            setResults(found.filter(u => u.userID !== myID && !friendIDs.has(u.userID)))
+            const q = normalize(text.trim())
+            const filtered = found.filter(u => u.userID !== myID && !friendIDs.has(u.userID))
+            filtered.sort((a, b) => {
+                const aStarts = normalize(a.pseudo).startsWith(q) || normalize(a.firstName).startsWith(q)
+                const bStarts = normalize(b.pseudo).startsWith(q) || normalize(b.firstName).startsWith(q)
+                return aStarts === bStarts ? 0 : aStarts ? -1 : 1
+            })
+            setResults(filtered)
         } catch {
             setResults([])
         } finally {
@@ -97,14 +104,17 @@ export default function FriendsScreen() {
     }
 
     const friends = relations?.friends ?? []
-    const filteredFriends = friendFilter.trim().length === 0
-        ? friends
-        : friends.filter(f => {
-            const q = friendFilter.toLowerCase()
-            return f.pseudo.toLowerCase().includes(q)
-                || f.firstName.toLowerCase().includes(q)
-                || f.lastName.toLowerCase().includes(q)
-        })
+    const filteredFriends = (() => {
+        const q = normalize(friendFilter)
+        if (!q) return friends
+        return friends
+            .filter(f => normalize(f.pseudo).includes(q) || normalize(f.firstName).includes(q) || normalize(f.lastName).includes(q))
+            .sort((a, b) => {
+                const aStarts = normalize(a.pseudo).startsWith(q) || normalize(a.firstName).startsWith(q)
+                const bStarts = normalize(b.pseudo).startsWith(q) || normalize(b.firstName).startsWith(q)
+                return aStarts === bStarts ? 0 : aStarts ? -1 : 1
+            })
+    })()
 
     return (
         <SafeAreaView style={styles.container}>
@@ -146,6 +156,7 @@ export default function FriendsScreen() {
                         data={results}
                         keyExtractor={u => u.userID}
                         contentContainerStyle={styles.list}
+                        keyboardShouldPersistTaps="handled"
                         ListEmptyComponent={
                             query.length >= 2 && !searching
                                 ? <Text style={styles.empty}>Aucun utilisateur trouvé.</Text>

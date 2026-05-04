@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native'
 import { Plus, ChevronDown } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
 import { ShoppingItem } from '@/src/types/shoppingList'
 import { Ingredient } from '@/src/types/ingredient'
 import { searchIngredients } from '@/src/services/ingredients.service'
+import { normalize } from '@/src/utils/search'
 import { UNITS } from '@/src/constants/units'
 
 type Props = {
@@ -28,7 +29,13 @@ export default function AddShoppingItem({ listID, onAdd }: Props) {
         if (text.length < 1) { setSuggestions([]); return }
         try {
             const results = await searchIngredients(text)
-            setSuggestions(results.slice(0, 5))
+            const q = normalize(text)
+            results.sort((a, b) => {
+                const aStarts = normalize(a.name).startsWith(q)
+                const bStarts = normalize(b.name).startsWith(q)
+                return aStarts === bStarts ? 0 : aStarts ? -1 : 1
+            })
+            setSuggestions(results.slice(0, 6))
         } catch {
             setSuggestions([])
         }
@@ -82,7 +89,11 @@ export default function AddShoppingItem({ listID, onAdd }: Props) {
 
             {/* Suggestions */}
             {suggestions.length > 0 && (
-                <View style={styles.dropdown}>
+                <ScrollView
+                    style={styles.dropdown}
+                    keyboardShouldPersistTaps="always"
+                    nestedScrollEnabled
+                >
                     {suggestions.map(ingredient => (
                         <TouchableOpacity
                             key={String(ingredient.ingredientID)}
@@ -96,7 +107,7 @@ export default function AddShoppingItem({ listID, onAdd }: Props) {
                     <TouchableOpacity style={styles.suggestion} onPress={handleAdd}>
                         <Text style={styles.addFreeText}>Ajouter "{name}" manuellement</Text>
                     </TouchableOpacity>
-                </View>
+                </ScrollView>
             )}
 
             <View style={styles.row}>
@@ -169,6 +180,7 @@ const styles = StyleSheet.create({
         borderColor: Colors.border,
         marginBottom: Spacing.sm,
         overflow: 'hidden',
+        maxHeight: 220,
     },
     suggestion: {
         flexDirection: 'row',
