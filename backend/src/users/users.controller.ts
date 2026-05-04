@@ -71,6 +71,11 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  @Get(':userID/recipes')
+  findUserRecipes(@Param('userID') userID: string) {
+    return this.usersService.findRecipesByUser(userID);
+  }
+
   @Get(':userID')
   findOne(@Param('userID') userID: string) {
     return this.usersService.findOne(userID);

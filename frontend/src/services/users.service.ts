@@ -1,4 +1,5 @@
 import { apiFetch } from './api.service';
+import type { Recipe } from '../types/recipe';
 
 export type User = {
   userID: string;
@@ -41,4 +42,8 @@ export async function updateMe(data: {
 
 export async function deleteMe(): Promise<void> {
   await apiFetch('/users/me', { method: 'DELETE' });
+}
+
+export async function getUserRecipes(userID: string): Promise<Recipe[]> {
+  return apiFetch(`/users/${userID}/recipes`, { method: 'GET' });
 }

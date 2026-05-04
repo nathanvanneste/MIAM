@@ -187,7 +187,20 @@ export default function FriendsScreen() {
                             </View>
                         }
                         renderItem={({ item }) => (
-                            <View style={styles.userCard}>
+                            <TouchableOpacity
+                                style={styles.userCard}
+                                activeOpacity={0.75}
+                                onPress={() => router.push({
+                                    pathname: '/user/[userID]',
+                                    params: {
+                                        userID: item.userID,
+                                        pseudo: item.pseudo,
+                                        firstName: item.firstName,
+                                        lastName: item.lastName,
+                                        avatar: item.avatar ?? '',
+                                    },
+                                })}
+                            >
                                 <UserAvatar user={item} size={46} />
                                 <View style={styles.userInfo}>
                                     <Text style={styles.userPseudo}>@{item.pseudo}</Text>
@@ -199,7 +212,7 @@ export default function FriendsScreen() {
                                 >
                                     <X size={18} color={Colors.textSecondary} />
                                 </TouchableOpacity>
-                            </View>
+                            </TouchableOpacity>
                         )}
                     />
                 )

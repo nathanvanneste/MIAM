@@ -360,6 +360,20 @@ private readonly include = {
     });
   }
 
+  async findRecipesByUser(userID: string) {
+    return this.prisma.recipe.findMany({
+      where: { creatorID: userID },
+      include: {
+        creator: true,
+        steps: { orderBy: { order: 'asc' as const } },
+        ingredients: { include: { ingredient: true, unit: true } },
+        tags: { include: { tag: true } },
+        reviews: { include: { user: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async updateMyAvatar(userID: string, avatar: string) {
     if (!avatar.startsWith(`${userID}/`)) {
       throw new BadRequestException(
