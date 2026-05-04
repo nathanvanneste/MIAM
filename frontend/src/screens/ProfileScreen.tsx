@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { Text, StyleSheet, ScrollView, TouchableOpacity, View } from "react-native";
 import SearchBar from "../components/ui/SearchBar";
 import RecipeCard from "../components/ui/Recipe/RecipeCard";
 import { Colors } from "../constants/colors";
@@ -11,7 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import ProfileDescription from "../components/ui/Profile/ProfileDescription";
 import { router } from "expo-router";
 import { getSignedAvatarUrl } from "../services/storage.service";
-import { getMe, type User } from "../services/users.service";
+import { getMe, getMySavedRecipes, type User, type SavedRecipeItem } from "../services/users.service";
 import { getMyRecipes } from "../services/recipes.service";
 import { getMyRelations } from "../services/friends.service";
 
@@ -20,14 +20,16 @@ export default function ProfileScreen() {
     const [user, setUser] = useState<User | null>(null);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [recipes, setRecipes] = useState<Recipe[]>([]);
+    const [savedRecipes, setSavedRecipes] = useState<SavedRecipeItem[]>([]);
     const [friendsCount, setFriendsCount] = useState(0);
     const [pendingCount, setPendingCount] = useState(0);
 
     const loadProfile = useCallback(async () => {
         try {
-            const [me, myRecipes, relations] = await Promise.all([
+            const [me, myRecipes, saved, relations] = await Promise.all([
                 getMe(),
                 getMyRecipes(),
+                getMySavedRecipes(),
                 getMyRelations().catch(() => ({ friends: [], invitations: [], sentPending: [], myID: '' })),
             ]);
 
@@ -35,6 +37,7 @@ export default function ProfileScreen() {
             setFriendsCount(relations.friends.length);
             setPendingCount(relations.invitations.length);
             setRecipes(myRecipes);
+            setSavedRecipes(saved);
 
             if (me.avatar) {
                 getSignedAvatarUrl(me.avatar).then(setAvatarUrl).catch(() => {});
@@ -48,6 +51,10 @@ export default function ProfileScreen() {
 
     const filteredRecipes = recipes.filter((r) =>
         r.name.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const filteredSaved = savedRecipes.filter((s) =>
+        s.recipe.name.toLowerCase().includes(search.toLowerCase())
     );
 
     return (
@@ -93,6 +100,26 @@ export default function ProfileScreen() {
                         ))
                     }
                 </Grid>
+
+                {filteredSaved.length > 0 && (
+                    <>
+                        <View style={styles.divider} />
+                        <Text style={styles.sectionTitle}>Recettes sauvegardées</Text>
+
+                        <Grid>
+                            {(cardWidth) =>
+                                filteredSaved.map((s) => (
+                                    <RecipeCard
+                                        key={s.recipeID}
+                                        recipe={s.recipe}
+                                        cardWidth={cardWidth}
+                                        creator={s.recipe.creator}
+                                    />
+                                ))
+                            }
+                        </Grid>
+                    </>
+                )}
             </ScrollView>
         </SafeAreaView>
     );
@@ -115,5 +142,11 @@ const styles = StyleSheet.create({
         color: Colors.textPrimary,
         paddingHorizontal: 24,
         marginBottom: 14,
+    },
+    divider: {
+        height: 1,
+        backgroundColor: Colors.border,
+        marginHorizontal: 24,
+        marginBottom: 20,
     },
 });

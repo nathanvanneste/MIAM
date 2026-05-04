@@ -1,5 +1,6 @@
 import { apiFetch } from './api.service';
 import type { Recipe } from '../types/recipe';
+import type { RecipeCreator } from './recipes.service';
 
 export type User = {
   userID: string;
@@ -46,4 +47,26 @@ export async function deleteMe(): Promise<void> {
 
 export async function getUserRecipes(userID: string): Promise<Recipe[]> {
   return apiFetch(`/users/${userID}/recipes`, { method: 'GET' });
+}
+
+export type SavedRecipeItem = {
+  userID: string
+  recipeID: number
+  savedAt: string
+  recipe: Recipe & { creator: RecipeCreator }
+}
+
+export async function getMySavedRecipes(): Promise<SavedRecipeItem[]> {
+  return apiFetch('/users/me/saved-recipes', { method: 'GET' });
+}
+
+export async function saveRecipe(recipeID: number): Promise<void> {
+  await apiFetch('/users/me/saved-recipes', {
+    method: 'POST',
+    body: JSON.stringify({ recipeID }),
+  });
+}
+
+export async function unsaveRecipe(recipeID: number): Promise<void> {
+  await apiFetch(`/users/me/saved-recipes/${recipeID}`, { method: 'DELETE' });
 }

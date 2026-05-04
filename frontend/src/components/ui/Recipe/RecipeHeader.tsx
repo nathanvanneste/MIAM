@@ -1,19 +1,22 @@
-// src/components/ui/Recipe/RecipeHeader.tsx
 import { View, Text, StyleSheet, Pressable } from "react-native";
-import { ArrowLeft, Share2, Clock, Flame, Pencil, X } from "lucide-react-native";
+import { ArrowLeft, Share2, Clock, Flame, Pencil, X, Bookmark } from "lucide-react-native";
 import { Colors } from "@/src/constants/colors";
 import { FontSize, FontWeight } from "@/src/constants/typography";
+import UserAvatar from "../UserAvatar";
 
 type RecipeHeaderProps = {
   title: string;
   description?: string | null;
   prepTime: string;
   cookTime: string;
+  creator?: { pseudo: string; avatar?: string | null };
+  isSaved?: boolean;
   onBack?: () => void;
   onShare?: () => void;
   isEditing?: boolean;
   onToggleEdit?: () => void;
   onEdit?: () => void;
+  onToggleSave?: () => void;
 };
 
 export default function RecipeHeader({
@@ -21,15 +24,18 @@ export default function RecipeHeader({
   description,
   prepTime,
   cookTime,
+  creator,
+  isSaved,
   onBack,
   onShare,
   isEditing = false,
   onToggleEdit,
   onEdit,
+  onToggleSave,
 }: RecipeHeaderProps) {
   return (
     <View style={[styles.header, isEditing && styles.headerEditing]}>
-      {/* Top row: back + toggle edit/share */}
+      {/* Top row: back + actions */}
       <View style={styles.headerTop}>
         <Pressable onPress={onBack} style={styles.iconButton} hitSlop={8}>
           <ArrowLeft size={22} color={Colors.textPrimary} />
@@ -41,6 +47,15 @@ export default function RecipeHeader({
                 ? <X size={22} color={Colors.primaryLight} />
                 : <Pencil size={20} color={Colors.textPrimary} />
               }
+            </Pressable>
+          )}
+          {onToggleSave !== undefined && (
+            <Pressable onPress={onToggleSave} style={styles.iconButton} hitSlop={8}>
+              <Bookmark
+                size={22}
+                color={Colors.primaryLight}
+                fill={isSaved ? Colors.primaryLight : 'transparent'}
+              />
             </Pressable>
           )}
           {!isEditing && onShare && (
@@ -59,7 +74,15 @@ export default function RecipeHeader({
         <Text style={styles.description} numberOfLines={2}>{description}</Text>
       ) : null}
 
-      {/* Times row + edit pencil below times */}
+      {/* Creator (non-owner view) */}
+      {creator && (
+        <View style={styles.creatorRow}>
+          <UserAvatar user={creator} size={18} />
+          <Text style={styles.creatorText}>@{creator.pseudo}</Text>
+        </View>
+      )}
+
+      {/* Times row */}
       <View style={styles.timesRow}>
         <View style={styles.timeItem}>
           <Clock size={14} color={Colors.textSecondary} />
@@ -70,7 +93,6 @@ export default function RecipeHeader({
           <Text style={styles.timeText}>{cookTime}</Text>
         </View>
 
-        {/* Crayon édition — aligné à droite sur la même ligne que les temps */}
         {isEditing && onEdit && (
           <Pressable onPress={onEdit} hitSlop={8} style={styles.editTimesButton}>
             <Pencil size={15} color={Colors.primaryLight} />
@@ -129,6 +151,18 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginBottom: 8,
     lineHeight: 20,
+  },
+
+  creatorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  creatorText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+    color: Colors.primaryLight,
   },
 
   timesRow: {

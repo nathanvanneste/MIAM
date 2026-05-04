@@ -1,4 +1,3 @@
-// src/screens/RecipeScreen.tsx
 import { useState, useEffect, useRef } from "react";
 import { StyleSheet, ScrollView, ActivityIndicator, Alert, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -10,9 +9,11 @@ import PreparationList from "@/src/components/ui/Recipe/PreparationList";
 import EditHeaderSheet from "@/src/components/ui/Recipe/EditHeaderSheet";
 import PrimaryButton from "@/src/components/ui/PrimaryButton";
 import { getRecipeById, updateRecipe } from "@/src/services/recipes.service";
+import { saveRecipe, unsaveRecipe } from "@/src/services/users.service";
 import type { RecipeDetail } from "@/src/services/recipes.service";
 import type { RecipeIngredient } from "@/src/types/recipeIngredient";
 import type { IngredientFormData } from "@/src/components/ui/Recipe/IngredientFormSheet";
+import { useAuth } from "@/src/hooks/useAuth";
 import { useRouter } from "expo-router";
 
 type RecipeScreenProps = {
@@ -34,6 +35,8 @@ const toBackendIngredients = (ingredients: RecipeIngredient[]) =>
 
 export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
   const router = useRouter();
+  const { user: currentUser } = useAuth();
+
   const [tab, setTab] = useState<RecipeTab>("ingredients");
   const [portions, setPortions] = useState<number>(1);
   const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
@@ -41,9 +44,11 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [headerSheetVisible, setHeaderSheetVisible] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
-  // Track unsaved changes
   const hasUnsavedChanges = useRef(false);
+
+  const isOwner = !!recipe && !!currentUser && recipe.creator?.userID === currentUser.id;
 
   useEffect(() => {
     const load = async () => {
@@ -51,6 +56,9 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
         const data = await getRecipeById(recipeID);
         setRecipe(data);
         setPortions(data.portion);
+        if (currentUser) {
+          setIsSaved(data.savedBy?.some(s => s.userID === currentUser.id) ?? false);
+        }
       } catch (e) {
         console.error("Erreur chargement recette", e);
       } finally {
@@ -58,9 +66,8 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
       }
     };
     load();
-  }, [recipeID]);
+  }, [recipeID, currentUser]);
 
-  // Mark changes as unsaved whenever recipe state changes in edit mode
   const markUnsaved = () => { hasUnsavedChanges.current = true; };
 
   const handleToggleEdit = () => {
@@ -86,6 +93,21 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
     }
   };
 
+  const handleToggleSave = async () => {
+    const prev = isSaved;
+    setIsSaved(!prev);
+    try {
+      if (prev) {
+        await unsaveRecipe(recipeID);
+      } else {
+        await saveRecipe(recipeID);
+      }
+    } catch {
+      setIsSaved(prev);
+      Alert.alert("Erreur", prev ? "Impossible de retirer la recette." : "Impossible de sauvegarder la recette.");
+    }
+  };
+
   const handleSaveAll = async () => {
     if (!recipe) return;
     setIsSaving(true);
@@ -97,14 +119,14 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
         cookTime: recipe.cookTime,
         ingredients: toBackendIngredients(recipe.ingredients),
         steps: recipe.steps.map((s, i) => ({
-          ...(s.stepID ? { stepID: s.stepID } : {}), // ← stepID seulement si existant
+          ...(s.stepID ? { stepID: s.stepID } : {}),
           text: s.text,
           order: i + 1,
         })),
       });
-            hasUnsavedChanges.current = false;
+      hasUnsavedChanges.current = false;
       setIsEditing(false);
-    } catch (e) {
+    } catch {
       Alert.alert("Erreur", "Impossible d'enregistrer les modifications.");
     } finally {
       setIsSaving(false);
@@ -159,9 +181,8 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
     const updatedSteps = steps.map((text, i) => ({
       ...(recipe.steps[i] ?? {}),
       text,
-      order: i + 1,                    // ← toujours présent
-      recipeID: recipe.recipeID,       // ← toujours présent
-      // stepID absent pour les nouvelles étapes — le backend le génère
+      order: i + 1,
+      recipeID: recipe.recipeID,
     }));
     setRecipe({ ...recipe, steps: updatedSteps });
     markUnsaved();
@@ -182,11 +203,14 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
         description={recipe.description}
         prepTime={formatTime(recipe.prepTime)}
         cookTime={formatTime(recipe.cookTime)}
+        creator={!isOwner ? recipe.creator : undefined}
+        isSaved={isSaved}
         onBack={() => router.back()}
         onShare={onShare}
         isEditing={isEditing}
-        onToggleEdit={handleToggleEdit}
+        onToggleEdit={isOwner ? handleToggleEdit : undefined}
         onEdit={isEditing ? () => setHeaderSheetVisible(true) : undefined}
+        onToggleSave={!isOwner ? handleToggleSave : undefined}
       />
 
       <RecipeTabBar activeTab={tab} onTabChange={setTab} />
@@ -216,7 +240,6 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
         )}
       </ScrollView>
 
-      {/* Save button — only visible in edit mode */}
       {isEditing && (
         <View style={styles.footer}>
           <PrimaryButton

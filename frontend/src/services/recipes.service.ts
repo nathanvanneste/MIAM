@@ -4,17 +4,21 @@ import { CreateRecipeDTO, Recipe } from '../types/recipe'
 import { Ingredient } from '../types/ingredient'
 import { uploadRecipePhoto } from './storage.service';
 
-// RecipeDetail = Recipe (backend returns the same shape for all recipe endpoints)
-export type RecipeDetail = Recipe
+export type RecipeCreator = {
+  userID: string
+  pseudo: string
+  firstName: string
+  lastName: string
+  avatar?: string | null
+}
+
+export type RecipeDetail = Recipe & {
+  creator?: RecipeCreator
+  savedBy?: Array<{ userID: string }>
+}
 
 export type FeedRecipe = RecipeDetail & {
-  creator: {
-    userID: string
-    pseudo: string
-    firstName: string
-    lastName: string
-    avatar?: string | null
-  }
+  creator: RecipeCreator
 }
 
 export type FeedResult = { recent: FeedRecipe[]; random: FeedRecipe[] }
