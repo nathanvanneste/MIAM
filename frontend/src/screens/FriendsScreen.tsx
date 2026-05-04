@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator, Image, RefreshControl } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ArrowLeft, Search, UserPlus, UserCheck, X } from 'lucide-react-native'
 import { router } from 'expo-router'
@@ -12,25 +12,7 @@ import {
     removeFriendship,
     type MyRelations,
 } from '@/src/services/friends.service'
-import { getSignedAvatarUrl } from '@/src/services/storage.service'
-
-function Avatar({ user }: { user: FriendUser }) {
-    const [url, setUrl] = useState<string | null>(null)
-    useEffect(() => {
-        if (user.avatar && !user.avatar.startsWith('http')) {
-            getSignedAvatarUrl(user.avatar).then(setUrl).catch(() => {})
-        } else if (user.avatar) {
-            setUrl(user.avatar)
-        }
-    }, [user.avatar])
-
-    if (url) return <Image source={{ uri: url }} style={styles.avatar} />
-    return (
-        <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarInitial}>{user.pseudo[0]?.toUpperCase()}</Text>
-        </View>
-    )
-}
+import UserAvatar from '@/src/components/ui/UserAvatar'
 
 export default function FriendsScreen() {
     const [relations, setRelations] = useState<MyRelations | null>(null)
@@ -166,7 +148,7 @@ export default function FriendsScreen() {
                             const already = sentIDs.has(item.userID)
                             return (
                                 <View style={styles.userCard}>
-                                    <Avatar user={item} />
+                                    <UserAvatar user={item} size={46} />
                                     <View style={styles.userInfo}>
                                         <Text style={styles.userPseudo}>@{item.pseudo}</Text>
                                         <Text style={styles.userName}>{item.firstName} {item.lastName}</Text>
@@ -206,7 +188,7 @@ export default function FriendsScreen() {
                         }
                         renderItem={({ item }) => (
                             <View style={styles.userCard}>
-                                <Avatar user={item} />
+                                <UserAvatar user={item} size={46} />
                                 <View style={styles.userInfo}>
                                     <Text style={styles.userPseudo}>@{item.pseudo}</Text>
                                     <Text style={styles.userName}>{item.firstName} {item.lastName}</Text>
@@ -225,8 +207,6 @@ export default function FriendsScreen() {
         </SafeAreaView>
     )
 }
-
-const AVATAR_SIZE = 46
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
@@ -274,17 +254,6 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.sm,
         gap: Spacing.sm,
     },
-
-    avatar: { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 },
-    avatarPlaceholder: {
-        width: AVATAR_SIZE,
-        height: AVATAR_SIZE,
-        borderRadius: AVATAR_SIZE / 2,
-        backgroundColor: Colors.cardLight,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    avatarInitial: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.primaryLight },
 
     userInfo: { flex: 1 },
     userPseudo: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.textPrimary },

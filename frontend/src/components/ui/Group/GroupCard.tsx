@@ -2,14 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { ChevronRight, UsersRound, CookingPot } from "lucide-react-native";
 import { Colors } from "../../../constants/colors";
 import { FontSize, FontWeight } from "../../../constants/typography";
-
-const PALETTE = ['#FFE6CF', '#E2F9F7', '#E9FADB', '#F0CAA7', '#FBE9DC', '#EEE0FF']
-
-function groupColor(name: string): string {
-    let hash = 0
-    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) % PALETTE.length
-    return PALETTE[Math.abs(hash)]
-}
+import { groupColor } from "@/src/utils/groupColor";
 
 type GroupCardProps = {
     name: string

@@ -1,87 +1,29 @@
-import { useState, useEffect, useCallback } from 'react'
-import {
-    View, Text, FlatList, Image, TouchableOpacity,
-    StyleSheet, ActivityIndicator, RefreshControl,
-} from 'react-native'
+import { useState, useCallback, useEffect } from 'react'
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl, useWindowDimensions } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Users } from 'lucide-react-native'
-import { router } from 'expo-router'
-import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '@/src/constants'
+import { Colors, FontSize, FontWeight, Spacing } from '@/src/constants'
 import { FeedRecipe, getFeed } from '@/src/services/recipes.service'
-import { getSignedRecipePhotoUrl, getSignedAvatarUrl } from '@/src/services/storage.service'
+import RecipeCard from '@/src/components/ui/Recipe/RecipeCard'
 
-// ── Carte recette ─────────────────────────────────────────────────
-function RecipeCard({ recipe }: { recipe: FeedRecipe }) {
-    const [photoUrl, setPhotoUrl] = useState<string | null>(null)
-    const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+const H_PAD = Spacing.md
+const COL_GAP = Spacing.sm
 
-    useEffect(() => {
-        if (!recipe.photo) return
-        if (recipe.photo.startsWith('http')) { setPhotoUrl(recipe.photo); return }
-        getSignedRecipePhotoUrl(recipe.photo).then(setPhotoUrl).catch(() => {})
-    }, [recipe.photo])
-
-    useEffect(() => {
-        if (!recipe.creator.avatar) return
-        if (recipe.creator.avatar.startsWith('http')) { setAvatarUrl(recipe.creator.avatar); return }
-        getSignedAvatarUrl(recipe.creator.avatar).then(setAvatarUrl).catch(() => {})
-    }, [recipe.creator.avatar])
-
-    const totalTime = (recipe.prepTime ?? 0) + (recipe.cookTime ?? 0)
-
-    return (
-        <TouchableOpacity
-            style={styles.card}
-            activeOpacity={0.85}
-            onPress={() => router.push({
-                pathname: '/recipe/[recipeID]',
-                params: { recipeID: recipe.recipeID.toString() },
-            })}
-        >
-            {/* Photo */}
-            {photoUrl ? (
-                <Image source={{ uri: photoUrl }} style={styles.cardPhoto} />
-            ) : (
-                <View style={[styles.cardPhoto, styles.cardPhotoFallback]}>
-                    <Text style={styles.cardPhotoInitial}>{recipe.name[0]?.toUpperCase()}</Text>
-                </View>
-            )}
-
-            <View style={styles.cardBody}>
-                {/* Créateur */}
-                <View style={styles.creatorRow}>
-                    {avatarUrl ? (
-                        <Image source={{ uri: avatarUrl }} style={styles.creatorAvatar} />
-                    ) : (
-                        <View style={[styles.creatorAvatar, styles.creatorAvatarFallback]}>
-                            <Text style={styles.creatorInitial}>
-                                {recipe.creator.pseudo[0]?.toUpperCase()}
-                            </Text>
-                        </View>
-                    )}
-                    <Text style={styles.creatorPseudo}>@{recipe.creator.pseudo}</Text>
-                </View>
-
-                {/* Nom */}
-                <Text style={styles.cardName} numberOfLines={2}>{recipe.name}</Text>
-
-                {/* Méta */}
-                <Text style={styles.cardMeta}>
-                    {totalTime > 0 ? `${totalTime} min · ` : ''}
-                    {recipe.ingredients.length} ingrédient{recipe.ingredients.length > 1 ? 's' : ''}
-                </Text>
-            </View>
-        </TouchableOpacity>
-    )
-}
-
-// ── Écran principal ───────────────────────────────────────────────
 type FeedItem =
     | { type: 'header'; title: string }
-    | { type: 'recipe'; recipe: FeedRecipe }
+    | { type: 'pair'; items: FeedRecipe[] }
     | { type: 'empty'; message: string }
 
+const toPairs = (recipes: FeedRecipe[]): FeedItem[] =>
+    Array.from({ length: Math.ceil(recipes.length / 2) }, (_, i) => ({
+        type: 'pair' as const,
+        items: recipes.slice(i * 2, i * 2 + 2),
+    }))
+
 export default function FeedScreen() {
+    const { width } = useWindowDimensions()
+    const cardWidth = (width - H_PAD * 2 - COL_GAP) / 2
+
     const [items, setItems] = useState<FeedItem[]>([])
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
@@ -98,11 +40,11 @@ export default function FeedScreen() {
             const built: FeedItem[] = []
             if (recent.length > 0) {
                 built.push({ type: 'header', title: 'Nouvelles recettes' })
-                recent.forEach(r => built.push({ type: 'recipe', recipe: r }))
+                built.push(...toPairs(recent))
             }
             if (random.length > 0) {
                 built.push({ type: 'header', title: 'Découvrir' })
-                random.forEach(r => built.push({ type: 'recipe', recipe: r }))
+                built.push(...toPairs(random))
             }
             setItems(built)
         } catch {
@@ -114,7 +56,6 @@ export default function FeedScreen() {
     }, [])
 
     useEffect(() => { load() }, [load])
-
     const onRefresh = useCallback(() => { setRefreshing(true); load() }, [load])
 
     return (
@@ -129,7 +70,7 @@ export default function FeedScreen() {
                 <FlatList
                     data={items}
                     keyExtractor={(item, i) =>
-                        item.type === 'recipe' ? `r-${item.recipe.recipeID}` : `${item.type}-${i}`
+                        item.type === 'pair' ? `pair-${item.items[0].recipeID}` : `${item.type}-${i}`
                     }
                     contentContainerStyle={styles.list}
                     showsVerticalScrollIndicator={false}
@@ -151,16 +92,25 @@ export default function FeedScreen() {
                                 </View>
                             )
                         }
-                        return <RecipeCard recipe={item.recipe} />
+                        return (
+                            <View style={styles.pair}>
+                                {item.items.map(r => (
+                                    <RecipeCard
+                                        key={r.recipeID}
+                                        recipe={r}
+                                        cardWidth={cardWidth}
+                                        creator={r.creator}
+                                    />
+                                ))}
+                                {item.items.length < 2 && <View style={{ width: cardWidth }} />}
+                            </View>
+                        )
                     }}
                 />
             )}
         </SafeAreaView>
     )
 }
-
-const PHOTO_HEIGHT = 200
-const AVATAR_SIZE = 28
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
@@ -179,10 +129,9 @@ const styles = StyleSheet.create({
     },
 
     list: {
-        paddingHorizontal: Spacing.xl,
+        paddingHorizontal: H_PAD,
         paddingTop: Spacing.md,
         paddingBottom: 32,
-        gap: Spacing.sm,
     },
 
     sectionHeader: {
@@ -195,72 +144,11 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.xs,
     },
 
-    // Carte
-    card: {
-        backgroundColor: Colors.surface,
-        borderRadius: BorderRadius.lg,
-        borderWidth: 1,
-        borderColor: Colors.border,
-        overflow: 'hidden',
-    },
-    cardPhoto: {
-        width: '100%',
-        height: PHOTO_HEIGHT,
-        resizeMode: 'cover',
-    },
-    cardPhotoFallback: {
-        backgroundColor: Colors.cardLight,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    cardPhotoInitial: {
-        fontSize: 64,
-        fontWeight: FontWeight.bold,
-        color: Colors.primaryMuted,
-    },
-    cardBody: {
-        padding: Spacing.md,
-        gap: Spacing.xs,
-    },
-    creatorRow: {
+    pair: {
         flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.xs,
-        marginBottom: 2,
-    },
-    creatorAvatar: {
-        width: AVATAR_SIZE,
-        height: AVATAR_SIZE,
-        borderRadius: AVATAR_SIZE / 2,
-    },
-    creatorAvatarFallback: {
-        backgroundColor: Colors.cardLight,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    creatorInitial: {
-        fontSize: FontSize.xs,
-        fontWeight: FontWeight.bold,
-        color: Colors.primaryLight,
-    },
-    creatorPseudo: {
-        fontSize: FontSize.sm,
-        fontWeight: FontWeight.medium,
-        color: Colors.primaryLight,
-    },
-    cardName: {
-        fontSize: FontSize.lg,
-        fontWeight: FontWeight.bold,
-        color: Colors.textPrimary,
-        lineHeight: 22,
-    },
-    cardMeta: {
-        fontSize: FontSize.sm,
-        color: Colors.textSecondary,
-        marginTop: 2,
+        gap: COL_GAP,
     },
 
-    // Empty state
     emptyState: {
         alignItems: 'center',
         paddingTop: 80,

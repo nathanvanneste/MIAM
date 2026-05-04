@@ -10,18 +10,16 @@ import Grid from "../components/ui/Recipe/RecipeGrid";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ProfileDescription from "../components/ui/Profile/ProfileDescription";
 import { router } from "expo-router";
-import { getSignedAvatarUrl, getSignedRecipePhotoUrl } from "../services/storage.service";
+import { getSignedAvatarUrl } from "../services/storage.service";
 import { getMe, type User } from "../services/users.service";
 import { getMyRecipes } from "../services/recipes.service";
 import { getMyRelations } from "../services/friends.service";
-
-type RecipeWithStyle = Recipe & { color?: string; icon?: string };
 
 export default function ProfileScreen() {
     const [search, setSearch] = useState("");
     const [user, setUser] = useState<User | null>(null);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-    const [recipes, setRecipes] = useState<RecipeWithStyle[]>([]);
+    const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [friendsCount, setFriendsCount] = useState(0);
     const [pendingCount, setPendingCount] = useState(0);
 
@@ -36,21 +34,11 @@ export default function ProfileScreen() {
             setUser(me);
             setFriendsCount(relations.friends.length);
             setPendingCount(relations.invitations.length);
+            setRecipes(myRecipes);
 
             if (me.avatar) {
                 getSignedAvatarUrl(me.avatar).then(setAvatarUrl).catch(() => {});
             }
-
-            const recipesWithPhotos: RecipeWithStyle[] = await Promise.all(
-                myRecipes.map(async (recipe) => {
-                    if (!recipe.photo || recipe.photo.startsWith("http")) {
-                        return { ...recipe, color: "#FBE9DC" };
-                    }
-                    const signedUrl = await getSignedRecipePhotoUrl(recipe.photo).catch(() => null);
-                    return { ...recipe, photo: signedUrl ?? recipe.photo, color: "#FBE9DC" };
-                })
-            );
-            setRecipes(recipesWithPhotos);
         } catch (error) {
             console.error("Erreur chargement profil :", error);
         }
@@ -100,8 +88,6 @@ export default function ProfileScreen() {
                             <RecipeCard
                                 key={recipe.recipeID}
                                 recipe={recipe}
-                                color={recipe.color}
-                                icon={recipe.icon}
                                 cardWidth={cardWidth}
                             />
                         ))

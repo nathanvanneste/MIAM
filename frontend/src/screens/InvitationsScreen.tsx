@@ -1,30 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator, Image, RefreshControl } from 'react-native'
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ArrowLeft, Check, X } from 'lucide-react-native'
 import { router } from 'expo-router'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '@/src/constants'
 import { InvitationWithUser } from '@/src/types/friend'
 import { getMyRelations, acceptFriendship, rejectFriendship } from '@/src/services/friends.service'
-import { getSignedAvatarUrl } from '@/src/services/storage.service'
-
-function Avatar({ user }: { user: InvitationWithUser['user'] }) {
-    const [url, setUrl] = useState<string | null>(null)
-    useEffect(() => {
-        if (user.avatar && !user.avatar.startsWith('http')) {
-            getSignedAvatarUrl(user.avatar).then(setUrl).catch(() => {})
-        } else if (user.avatar) {
-            setUrl(user.avatar)
-        }
-    }, [user.avatar])
-
-    if (url) return <Image source={{ uri: url }} style={styles.avatar} />
-    return (
-        <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarInitial}>{user.pseudo[0]?.toUpperCase()}</Text>
-        </View>
-    )
-}
+import UserAvatar from '@/src/components/ui/UserAvatar'
 
 export default function InvitationsScreen() {
     const [invitations, setInvitations] = useState<InvitationWithUser[]>([])
@@ -102,7 +84,7 @@ export default function InvitationsScreen() {
                         const isProcessing = processing === item.requesterID
                         return (
                             <View style={styles.card}>
-                                <Avatar user={item.user} />
+                                <UserAvatar user={item.user} size={50} />
                                 <View style={styles.userInfo}>
                                     <Text style={styles.pseudo}>@{item.user.pseudo}</Text>
                                     <Text style={styles.name}>{item.user.firstName} {item.user.lastName}</Text>
@@ -133,8 +115,6 @@ export default function InvitationsScreen() {
         </SafeAreaView>
     )
 }
-
-const AVATAR_SIZE = 50
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
@@ -167,17 +147,6 @@ const styles = StyleSheet.create({
         marginBottom: Spacing.sm,
         gap: Spacing.md,
     },
-
-    avatar: { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2 },
-    avatarPlaceholder: {
-        width: AVATAR_SIZE,
-        height: AVATAR_SIZE,
-        borderRadius: AVATAR_SIZE / 2,
-        backgroundColor: Colors.cardLight,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    avatarInitial: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.primaryLight },
 
     userInfo: { flex: 1 },
     pseudo: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.textPrimary },
