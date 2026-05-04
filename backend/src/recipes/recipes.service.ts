@@ -499,5 +499,33 @@ export class RecipesService {
       },
     });
   }
+
+  async findFeed(userID: string) {
+    const friendships = await this.prisma.friendship.findMany({
+      where: {
+        status: 'ACCEPTED',
+        OR: [{ requesterID: userID }, { receiverID: userID }],
+      },
+      select: { requesterID: true, receiverID: true },
+    });
+
+    const friendIDs = friendships.map(f =>
+      f.requesterID === userID ? f.receiverID : f.requesterID,
+    );
+
+    if (friendIDs.length === 0) return { recent: [], random: [] };
+
+    const all = await this.prisma.recipe.findMany({
+      where: { creatorID: { in: friendIDs } },
+      include: this.recipeInclude,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const RECENT = 10;
+    const recent = all.slice(0, RECENT);
+    const random = all.slice(RECENT).sort(() => Math.random() - 0.5);
+
+    return { recent, random };
+  }
 }
 

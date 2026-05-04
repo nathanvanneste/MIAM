@@ -44,6 +44,12 @@ export class RecipesController {
     return this.recipesService.findMine(req.user.userID);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('feed')
+  findFeed(@Req() req: AuthenticatedRequest) {
+    return this.recipesService.findFeed(req.user.userID);
+  }
+
   @Get(':recipeID')
   findOne(@Param('recipeID', ParseIntPipe) recipeID: number) {
     return this.recipesService.findOne(recipeID);

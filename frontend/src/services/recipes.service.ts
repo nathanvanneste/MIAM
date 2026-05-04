@@ -7,9 +7,23 @@ import { uploadRecipePhoto } from './storage.service';
 // RecipeDetail = Recipe (backend returns the same shape for all recipe endpoints)
 export type RecipeDetail = Recipe
 
-export const getMyRecipes = async (): Promise<RecipeDetail[]> => {
-  return await apiFetch('/recipes/me', { method: 'GET' });
-};
+export type FeedRecipe = RecipeDetail & {
+  creator: {
+    userID: string
+    pseudo: string
+    firstName: string
+    lastName: string
+    avatar?: string | null
+  }
+}
+
+export type FeedResult = { recent: FeedRecipe[]; random: FeedRecipe[] }
+
+export const getMyRecipes = async (): Promise<RecipeDetail[]> =>
+  apiFetch('/recipes/me', { method: 'GET' })
+
+export const getFeed = async (): Promise<FeedResult> =>
+  apiFetch('/recipes/feed', { method: 'GET' })
 
 export const getAllRecipes = async (): Promise<RecipeDetail[]> => {
   return await apiFetch('/recipes', { method: 'GET' });
