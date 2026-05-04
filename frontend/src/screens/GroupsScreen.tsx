@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import {
     View, Text, ScrollView, TouchableOpacity, Modal, TextInput,
-    StyleSheet, ActivityIndicator, Alert, FlatList, Image,
+    StyleSheet, ActivityIndicator, Alert, FlatList, Image, RefreshControl,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Plus, X, Check, Users } from 'lucide-react-native'
@@ -38,6 +38,7 @@ function FriendAvatar({ user, size = 40 }: { user: FriendUser; size?: number }) 
 export default function GroupsScreen() {
     const [groups, setGroups] = useState<Group[]>([])
     const [loading, setLoading] = useState(true)
+    const [refreshing, setRefreshing] = useState(false)
     const [showCreate, setShowCreate] = useState(false)
 
     const load = useCallback(async () => {
@@ -48,8 +49,11 @@ export default function GroupsScreen() {
         } catch {
         } finally {
             setLoading(false)
+            setRefreshing(false)
         }
     }, [])
+
+    const onRefresh = useCallback(() => { setRefreshing(true); load() }, [load])
 
     useEffect(() => { load() }, [load])
 
@@ -87,7 +91,11 @@ export default function GroupsScreen() {
                     </TouchableOpacity>
                 </View>
             ) : (
-                <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    contentContainerStyle={styles.list}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
+                >
                     {groups.map(group => (
                         <GroupCard
                             key={group.groupID}

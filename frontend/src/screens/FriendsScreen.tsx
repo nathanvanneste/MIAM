@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert, ActivityIndicator, Image, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ArrowLeft, Search, UserPlus, UserCheck, X } from 'lucide-react-native'
 import { router } from 'expo-router'
@@ -40,6 +40,7 @@ export default function FriendsScreen() {
     const [results, setResults] = useState<FriendUser[]>([])
     const [searching, setSearching] = useState(false)
     const [sentIDs, setSentIDs] = useState<Set<string>>(new Set())
+    const [refreshing, setRefreshing] = useState(false)
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -50,8 +51,11 @@ export default function FriendsScreen() {
         } catch {
         } finally {
             setLoading(false)
+            setRefreshing(false)
         }
     }, [])
+
+    const onRefresh = useCallback(() => { setRefreshing(true); load() }, [load])
 
     useEffect(() => { load() }, [load])
 
@@ -193,6 +197,7 @@ export default function FriendsScreen() {
                         data={friends}
                         keyExtractor={f => f.userID}
                         contentContainerStyle={styles.list}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
                         ListEmptyComponent={
                             <View style={styles.emptyState}>
                                 <Text style={styles.emptyTitle}>Aucun ami pour l'instant</Text>

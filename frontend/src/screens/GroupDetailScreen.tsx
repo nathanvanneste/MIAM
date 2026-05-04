@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
     View, Text, ScrollView, TouchableOpacity, Modal, FlatList,
-    StyleSheet, ActivityIndicator, Alert, Image,
+    StyleSheet, ActivityIndicator, Alert, Image, RefreshControl,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ArrowLeft, Pencil, X, Plus, Check, UserPlus, ChefHat, Users } from 'lucide-react-native'
@@ -97,6 +97,7 @@ type Tab = 'recipes' | 'members'
 export default function GroupDetailScreen({ groupID }: { groupID: number }) {
     const [group, setGroup] = useState<Group | null>(null)
     const [loading, setLoading] = useState(true)
+    const [refreshing, setRefreshing] = useState(false)
     const [tab, setTab] = useState<Tab>('recipes')
     const [isEditing, setIsEditing] = useState(false)
     const [showAddRecipe, setShowAddRecipe] = useState(false)
@@ -111,8 +112,11 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
             router.back()
         } finally {
             setLoading(false)
+            setRefreshing(false)
         }
     }, [groupID])
+
+    const onRefresh = useCallback(() => { setRefreshing(true); load() }, [load])
 
     useEffect(() => { load() }, [load])
 
@@ -230,7 +234,11 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
 
             {/* Contenu */}
             {tab === 'recipes' ? (
-                <ScrollView contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    contentContainerStyle={styles.tabContent}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
+                >
                     {isEditing && (
                         <TouchableOpacity style={styles.addRowBtn} onPress={() => setShowAddRecipe(true)}>
                             <Plus size={18} color={Colors.primaryButton} />
@@ -263,7 +271,11 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
                     )}
                 </ScrollView>
             ) : (
-                <ScrollView contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    contentContainerStyle={styles.tabContent}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
+                >
                     {isEditing && (
                         <TouchableOpacity style={styles.addRowBtn} onPress={() => setShowAddMember(true)}>
                             <UserPlus size={18} color={Colors.primaryButton} />
