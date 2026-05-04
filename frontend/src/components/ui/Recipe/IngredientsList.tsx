@@ -132,18 +132,19 @@ const styles = StyleSheet.create({
   portionsRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center", // 👈 centré
     marginBottom: 16,
   },
   portionsSelector: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
     borderWidth: 1.5,
     borderColor: Colors.primaryMuted,
     borderRadius: 30,
     paddingHorizontal: 14,
     paddingVertical: 8,
     gap: 14,
+    backgroundColor: Colors.surface, // 👈 fond blanc
   },
   portionButton: { padding: 2 },
   portionsText: {
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   quantity: {
-    width: 28,
+    minWidth: 20,
     fontSize: FontSize.md,
     fontWeight: FontWeight.semibold,
     color: Colors.textPrimary,

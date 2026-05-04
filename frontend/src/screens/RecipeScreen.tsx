@@ -102,7 +102,7 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
           order: i + 1,
         })),
       });
-      hasUnsavedChanges.current = false;
+            hasUnsavedChanges.current = false;
       setIsEditing(false);
     } catch (e) {
       Alert.alert("Erreur", "Impossible d'enregistrer les modifications.");
