@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Text, StyleSheet, ScrollView, TouchableOpacity, View } from "react-native";
+import { Text, StyleSheet, ScrollView, TouchableOpacity, View, RefreshControl } from "react-native";
 import SearchBar from "../components/ui/SearchBar";
 import RecipeCard from "../components/ui/Recipe/RecipeCard";
 import { Colors } from "../constants/colors";
@@ -23,6 +23,7 @@ export default function ProfileScreen() {
     const [savedRecipes, setSavedRecipes] = useState<SavedRecipeItem[]>([]);
     const [friendsCount, setFriendsCount] = useState(0);
     const [pendingCount, setPendingCount] = useState(0);
+    const [refreshing, setRefreshing] = useState(false);
 
     const loadProfile = useCallback(async () => {
         try {
@@ -44,10 +45,13 @@ export default function ProfileScreen() {
             }
         } catch (error) {
             console.error("Erreur chargement profil :", error);
+        } finally {
+            setRefreshing(false);
         }
     }, []);
 
     useEffect(() => { loadProfile() }, [loadProfile]);
+    const onRefresh = useCallback(() => { setRefreshing(true); loadProfile(); }, [loadProfile]);
 
     const filteredRecipes = recipes.filter((r) =>
         r.name.toLowerCase().includes(search.toLowerCase())
@@ -59,7 +63,10 @@ export default function ProfileScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
+            >
                 <TouchableOpacity
                     style={styles.settings}
                     onPress={() => router.push("/settings")}

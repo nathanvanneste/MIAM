@@ -298,25 +298,41 @@ export default function ShoppingListScreen() {
                         <Text style={styles.emptyList}>La liste est vide.</Text>
                     )}
 
-                    {unchecked.map(item => (
-                        <View key={item.itemID} style={styles.item}>
-                            <TouchableOpacity style={styles.checkbox} onPress={() => handleToggle(item)} />
-                            <Text style={styles.itemName}>{item.name}</Text>
-                            {item.quantity != null && (
-                                <View style={styles.qtyBadge}>
-                                    <Text style={styles.qtyText}>
-                                        {item.quantity}{item.unit ? ` ${item.unit.type}` : ''}
-                                    </Text>
-                                </View>
-                            )}
-                            <TouchableOpacity
-                                onPress={() => handleRemove(item.itemID)}
-                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            >
-                                <Trash2 size={16} color={Colors.textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-                    ))}
+                    {(() => {
+                        const groups: Record<string, ShoppingItem[]> = {}
+                        for (const item of unchecked) {
+                            const cat = item.ingredient?.category || 'Autre'
+                            if (!groups[cat]) groups[cat] = []
+                            groups[cat].push(item)
+                        }
+                        const sorted = Object.keys(groups).sort((a, b) =>
+                            a === 'Autre' ? 1 : b === 'Autre' ? -1 : a.localeCompare(b, 'fr')
+                        )
+                        return sorted.map(cat => (
+                            <View key={cat}>
+                                <Text style={styles.categoryLabel}>{cat.toUpperCase()}</Text>
+                                {groups[cat].map(item => (
+                                    <View key={item.itemID} style={styles.item}>
+                                        <TouchableOpacity style={styles.checkbox} onPress={() => handleToggle(item)} />
+                                        <Text style={styles.itemName}>{item.name}</Text>
+                                        {item.quantity != null && (
+                                            <View style={styles.qtyBadge}>
+                                                <Text style={styles.qtyText}>
+                                                    {item.quantity}{item.unit ? ` ${item.unit.type}` : ''}
+                                                </Text>
+                                            </View>
+                                        )}
+                                        <TouchableOpacity
+                                            onPress={() => handleRemove(item.itemID)}
+                                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                        >
+                                            <Trash2 size={16} color={Colors.textSecondary} />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                        ))
+                    })()}
 
                     {checked.length > 0 && (
                         <View style={styles.checkedSection}>
@@ -544,6 +560,14 @@ const styles = StyleSheet.create({
         fontSize: FontSize.xs,
         fontWeight: FontWeight.medium,
         color: Colors.primaryMuted,
+    },
+    categoryLabel: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.semibold,
+        color: Colors.textSecondary,
+        letterSpacing: 0.8,
+        marginTop: Spacing.md,
+        marginBottom: Spacing.xs,
     },
     checkedSection: { marginTop: Spacing.sm },
     checkedHeader: {

@@ -5,6 +5,7 @@ import { X, Search, Minus, Plus, Check } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
 import { ShoppingList, ShoppingItem } from '@/src/types/shoppingList'
 import { RecipeDetail, getMyRecipes } from '@/src/services/recipes.service'
+import { getMySavedRecipes } from '@/src/services/users.service'
 import { addItem, updateItem, getList } from '@/src/services/shoppingList.service'
 import { getSignedRecipePhotoUrl } from '@/src/services/storage.service'
 
@@ -32,8 +33,17 @@ export default function ImportRecipeModal({ visible, listID, currentItems, onClo
         setSelected(new Set())
         setPhotoUrls({})
 
-        getMyRecipes()
-            .then(async (data) => {
+        Promise.allSettled([getMyRecipes(), getMySavedRecipes()])
+            .then(async ([myResult, savedResult]) => {
+                const mine: RecipeDetail[] = myResult.status === 'fulfilled' ? myResult.value : []
+                const savedRaw = savedResult.status === 'fulfilled' ? savedResult.value : []
+
+                const seen = new Set(mine.map(r => r.recipeID))
+                const savedOnly = savedRaw
+                    .filter(s => !seen.has(s.recipeID))
+                    .map(s => s.recipe as RecipeDetail)
+
+                const data = [...mine, ...savedOnly]
                 setRecipes(data)
 
                 const defaultPortions: Record<number, number> = {}
@@ -52,7 +62,6 @@ export default function ImportRecipeModal({ visible, listID, currentItems, onClo
                 data.filter(r => r.photo?.startsWith('http')).forEach(r => { urls[r.recipeID] = r.photo! })
                 setPhotoUrls(urls)
             })
-            .catch(() => {})
             .finally(() => setLoading(false))
     }, [visible])
 
@@ -139,6 +148,7 @@ export default function ImportRecipeModal({ visible, listID, currentItems, onClo
                     <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
                     <Text style={styles.cardMeta}>
                         {item.ingredients.length} ingrédient{item.ingredients.length > 1 ? 's' : ''}
+                        {item.creator ? `  ·  @${item.creator.pseudo}` : ''}
                     </Text>
                 </View>
 

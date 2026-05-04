@@ -23,6 +23,7 @@ export default function FriendsScreen() {
     const [searching, setSearching] = useState(false)
     const [sentIDs, setSentIDs] = useState<Set<string>>(new Set())
     const [refreshing, setRefreshing] = useState(false)
+    const [friendFilter, setFriendFilter] = useState('')
 
     const load = useCallback(async () => {
         setLoading(true)
@@ -96,6 +97,14 @@ export default function FriendsScreen() {
     }
 
     const friends = relations?.friends ?? []
+    const filteredFriends = friendFilter.trim().length === 0
+        ? friends
+        : friends.filter(f => {
+            const q = friendFilter.toLowerCase()
+            return f.pseudo.toLowerCase().includes(q)
+                || f.firstName.toLowerCase().includes(q)
+                || f.lastName.toLowerCase().includes(q)
+        })
 
     return (
         <SafeAreaView style={styles.container}>
@@ -175,16 +184,39 @@ export default function FriendsScreen() {
                 loading ? (
                     <ActivityIndicator style={{ flex: 1 }} color={Colors.primaryLight} />
                 ) : (
+                    <>
+                    {friends.length > 0 && (
+                        <View style={styles.searchRow}>
+                            <Search size={16} color={Colors.textSecondary} />
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Filtrer mes amis..."
+                                placeholderTextColor={Colors.textSecondary}
+                                value={friendFilter}
+                                onChangeText={setFriendFilter}
+                                multiline={false}
+                            />
+                            {friendFilter.length > 0 && (
+                                <TouchableOpacity onPress={() => setFriendFilter('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                    <X size={16} color={Colors.textSecondary} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    )}
                     <FlatList
-                        data={friends}
+                        data={filteredFriends}
                         keyExtractor={f => f.userID}
                         contentContainerStyle={styles.list}
                         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
                         ListEmptyComponent={
-                            <View style={styles.emptyState}>
-                                <Text style={styles.emptyTitle}>Aucun ami pour l'instant</Text>
-                                <Text style={styles.emptySubtitle}>Appuie sur + pour en ajouter</Text>
-                            </View>
+                            friendFilter.trim().length > 0 ? (
+                                <Text style={styles.empty}>Aucun ami trouvé.</Text>
+                            ) : (
+                                <View style={styles.emptyState}>
+                                    <Text style={styles.emptyTitle}>Aucun ami pour l'instant</Text>
+                                    <Text style={styles.emptySubtitle}>Appuie sur + pour en ajouter</Text>
+                                </View>
+                            )
                         }
                         renderItem={({ item }) => (
                             <TouchableOpacity
@@ -215,6 +247,7 @@ export default function FriendsScreen() {
                             </TouchableOpacity>
                         )}
                     />
+                    </>
                 )
             )}
         </SafeAreaView>
