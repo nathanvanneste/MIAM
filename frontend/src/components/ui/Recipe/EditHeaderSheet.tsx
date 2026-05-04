@@ -11,43 +11,53 @@ import {
   Platform,
   TouchableWithoutFeedback,
 } from "react-native";
-import { X } from "lucide-react-native";
+import { X, Check } from "lucide-react-native";
 import { Colors } from "../../../constants/colors";
 import { FontSize, FontWeight } from "../../../constants/typography";
 
 type EditHeaderSheetProps = {
   visible: boolean;
   title: string;
+  description: string | null;
   prepTime: number;
   cookTime: number;
   onClose: () => void;
-  onSave: (data: { title: string; prepTime: number; cookTime: number }) => void;
+  onSave: (data: { title: string; description: string; prepTime: number; cookTime: number }) => void;
 };
 
 export default function EditHeaderSheet({
   visible,
   title,
+  description,
   prepTime,
   cookTime,
   onClose,
   onSave,
 }: EditHeaderSheetProps) {
   const [localTitle, setLocalTitle] = useState(title);
+  const [localDescription, setLocalDescription] = useState(description ?? "");
   const [localPrep, setLocalPrep] = useState(String(prepTime));
   const [localCook, setLocalCook] = useState(String(cookTime));
 
   useEffect(() => {
     if (visible) {
       setLocalTitle(title);
+      setLocalDescription(description ?? "");
       setLocalPrep(String(prepTime));
       setLocalCook(String(cookTime));
     }
   }, [visible]);
 
+  const canSave = localTitle.trim().length > 0;
+
   const handleSave = () => {
-    const prep = parseInt(localPrep) || 0;
-    const cook = parseInt(localCook) || 0;
-    onSave({ title: localTitle.trim(), prepTime: prep, cookTime: cook });
+    if (!canSave) return;
+    onSave({
+      title: localTitle.trim(),
+      description: localDescription.trim(),
+      prepTime: parseInt(localPrep) || 0,
+      cookTime: parseInt(localCook) || 0,
+    });
     onClose();
   };
 
@@ -62,14 +72,21 @@ export default function EditHeaderSheet({
         style={styles.sheetWrapper}
       >
         <View style={styles.sheet}>
-          {/* Handle */}
           <View style={styles.handle} />
 
-          {/* Header */}
+          {/* Header avec X et ✓ */}
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Modifier la recette</Text>
             <Pressable onPress={onClose} hitSlop={8}>
               <X size={22} color={Colors.textPrimary} />
+            </Pressable>
+            <Text style={styles.sheetTitle}>Modifier la recette</Text>
+            <Pressable
+              onPress={handleSave}
+              disabled={!canSave}
+              hitSlop={8}
+              style={[styles.checkButton, !canSave && styles.checkButtonDisabled]}
+            >
+              <Check size={22} color={canSave ? Colors.primaryLight : Colors.border} strokeWidth={2.5} />
             </Pressable>
           </View>
 
@@ -81,6 +98,18 @@ export default function EditHeaderSheet({
             onChangeText={setLocalTitle}
             placeholder="Nom de la recette"
             placeholderTextColor={Colors.textSecondary}
+          />
+
+          {/* Description */}
+          <Text style={styles.label}>Description</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={localDescription}
+            onChangeText={setLocalDescription}
+            placeholder="Description de la recette"
+            placeholderTextColor={Colors.textSecondary}
+            multiline
+            numberOfLines={3}
           />
 
           {/* Temps */}
@@ -108,14 +137,6 @@ export default function EditHeaderSheet({
               />
             </View>
           </View>
-
-          {/* Save */}
-          <Pressable
-            style={({ pressed }) => [styles.saveButton, pressed && styles.saveButtonPressed]}
-            onPress={handleSave}
-          >
-            <Text style={styles.saveText}>Enregistrer</Text>
-          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -161,9 +182,17 @@ const styles = StyleSheet.create({
   },
 
   sheetTitle: {
-    fontSize: FontSize.xl,
+    fontSize: FontSize.lg,
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
+  },
+
+  checkButton: {
+    padding: 4,
+  },
+
+  checkButtonDisabled: {
+    opacity: 0.4,
   },
 
   label: {
@@ -185,30 +214,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+
   timeRow: {
     flexDirection: "row",
     gap: 12,
   },
 
-  timeField: {
-    flex: 1,
-  },
-
-  saveButton: {
-    backgroundColor: Colors.primaryButton,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-
-  saveButtonPressed: {
-    backgroundColor: Colors.primaryDarkButton,
-  },
-
-  saveText: {
-    fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
-    color: Colors.surface,
-  },
+  timeField: { flex: 1 },
 });

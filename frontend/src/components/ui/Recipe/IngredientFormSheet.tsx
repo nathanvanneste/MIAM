@@ -12,7 +12,7 @@ import {
   TouchableWithoutFeedback,
   FlatList,
 } from "react-native";
-import { X, Search, ChevronDown } from "lucide-react-native";
+import { X, Search, ChevronDown, Check } from "lucide-react-native";
 import { Colors } from "../../../constants/colors";
 import { FontSize, FontWeight } from "../../../constants/typography";
 import { RecipeIngredient } from "../../../types/recipeIngredient";
@@ -66,10 +66,7 @@ export default function IngredientFormSheet({
   const handleSearch = async (text: string) => {
     setSearch(text);
     setSelectedIngredient(null);
-    if (text.length < 1) {
-      setSuggestions([]);
-      return;
-    }
+    if (text.length < 1) { setSuggestions([]); return; }
     try {
       const results = await searchIngredients(text);
       setSuggestions(results);
@@ -83,10 +80,7 @@ export default function IngredientFormSheet({
     setSearch(ing.name);
     setSuggestions([]);
     const defaultUnit = UNITS.find((u) => u.type === ing.unitDefault);
-    if (defaultUnit) {
-      setUnit(defaultUnit.type);
-      setUnitID(defaultUnit.unitID);
-    }
+    if (defaultUnit) { setUnit(defaultUnit.type); setUnitID(defaultUnit.unitID); }
   };
 
   const handleSelectUnit = (u: { unitID: number; type: string }) => {
@@ -122,13 +116,21 @@ export default function IngredientFormSheet({
         <View style={styles.sheet}>
           <View style={styles.handle} />
 
-          {/* Header */}
+          {/* Header avec X et ✓ */}
           <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>
-              {isEdit ? "Modifier un ingrédient" : "Ajouter un ingrédient"}
-            </Text>
             <Pressable onPress={onClose} hitSlop={8}>
               <X size={22} color={Colors.textPrimary} />
+            </Pressable>
+            <Text style={styles.sheetTitle}>
+              {isEdit ? "Modifier l'ingrédient" : "Ajouter un ingrédient"}
+            </Text>
+            <Pressable
+              onPress={handleSave}
+              disabled={!canSave}
+              hitSlop={8}
+              style={[styles.checkButton, !canSave && styles.checkButtonDisabled]}
+            >
+              <Check size={22} color={canSave ? Colors.primaryLight : Colors.border} strokeWidth={2.5} />
             </Pressable>
           </View>
 
@@ -146,14 +148,7 @@ export default function IngredientFormSheet({
               autoCapitalize="none"
             />
             {search.length > 0 && (
-              <Pressable
-                hitSlop={8}
-                onPress={() => {
-                  setSearch("");
-                  setSelectedIngredient(null);
-                  setSuggestions([]);
-                }}
-              >
+              <Pressable hitSlop={8} onPress={() => { setSearch(""); setSelectedIngredient(null); setSuggestions([]); }}>
                 <X size={16} color={Colors.textSecondary} />
               </Pressable>
             )}
@@ -163,11 +158,7 @@ export default function IngredientFormSheet({
           {suggestions.length > 0 && (
             <View style={styles.dropdown}>
               {suggestions.slice(0, 5).map((ing) => (
-                <Pressable
-                  key={ing.ingredientID}
-                  style={styles.suggestion}
-                  onPress={() => handleSelectSuggestion(ing)}
-                >
+                <Pressable key={ing.ingredientID} style={styles.suggestion} onPress={() => handleSelectSuggestion(ing)}>
                   <Text style={styles.suggestionText}>{ing.name}</Text>
                   <Text style={styles.suggestionUnit}>{ing.unitDefault}</Text>
                 </Pressable>
@@ -188,13 +179,9 @@ export default function IngredientFormSheet({
                 keyboardType="decimal-pad"
               />
             </View>
-
             <View style={styles.unitField}>
               <Text style={styles.label}>Unité</Text>
-              <Pressable
-                style={styles.unitSelector}
-                onPress={() => setShowUnitPicker((v) => !v)}
-              >
+              <Pressable style={styles.unitSelector} onPress={() => setShowUnitPicker((v) => !v)}>
                 <Text style={unit ? styles.unitText : styles.unitPlaceholder}>
                   {unit || "Choisir"}
                 </Text>
@@ -218,33 +205,13 @@ export default function IngredientFormSheet({
                   style={[styles.unitChip, unit === u.type && styles.unitChipActive]}
                   onPress={() => handleSelectUnit(u)}
                 >
-                  <Text
-                    style={[
-                      styles.unitChipText,
-                      unit === u.type && styles.unitChipTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.unitChipText, unit === u.type && styles.unitChipTextActive]}>
                     {u.type || "–"}
                   </Text>
                 </Pressable>
               )}
             />
           )}
-
-          {/* Save */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.saveButton,
-              !canSave && styles.saveButtonDisabled,
-              pressed && canSave && styles.saveButtonPressed,
-            ]}
-            onPress={handleSave}
-            disabled={!canSave}
-          >
-            <Text style={styles.saveText}>
-              {isEdit ? "Enregistrer" : "Ajouter"}
-            </Text>
-          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -290,9 +257,17 @@ const styles = StyleSheet.create({
   },
 
   sheetTitle: {
-    fontSize: FontSize.xl,
+    fontSize: FontSize.lg,
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
+  },
+
+  checkButton: {
+    padding: 4,
+  },
+
+  checkButtonDisabled: {
+    opacity: 0.4,
   },
 
   label: {
@@ -356,13 +331,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  quantityField: {
-    flex: 1,
-  },
-
-  unitField: {
-    flex: 1,
-  },
+  quantityField: { flex: 1 },
+  unitField: { flex: 1 },
 
   input: {
     backgroundColor: Colors.surface,
@@ -397,9 +367,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
 
-  unitPicker: {
-    marginBottom: 16,
-  },
+  unitPicker: { marginBottom: 16 },
 
   unitPickerContent: {
     gap: 8,
@@ -428,27 +396,5 @@ const styles = StyleSheet.create({
   unitChipTextActive: {
     color: Colors.surface,
     fontWeight: FontWeight.semibold,
-  },
-
-  saveButton: {
-    backgroundColor: Colors.primaryButton,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-
-  saveButtonDisabled: {
-    opacity: 0.45,
-  },
-
-  saveButtonPressed: {
-    backgroundColor: Colors.primaryDarkButton,
-  },
-
-  saveText: {
-    fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
-    color: Colors.surface,
   },
 });

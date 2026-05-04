@@ -1,27 +1,26 @@
 // src/components/ui/Recipe/RecipeHeader.tsx
 import { View, Text, StyleSheet, Pressable } from "react-native";
-import { ArrowLeft, Share2, Clock, Timer, Pencil, X } from "lucide-react-native";
-import { Colors } from "../../../constants/colors";
-import { FontSize, FontWeight } from "../../../constants/typography";
+import { ArrowLeft, Share2, Clock, Flame, Pencil, X } from "lucide-react-native";
+import { Colors } from "@/src/constants/colors";
+import { FontSize, FontWeight } from "@/src/constants/typography";
 
 type RecipeHeaderProps = {
   title: string;
   description?: string | null;
   prepTime: string;
-  totalTime: string;
+  cookTime: string;
   onBack?: () => void;
   onShare?: () => void;
-  // Edit mode
   isEditing?: boolean;
-  onToggleEdit?: () => void;  // bascule édition on/off
-  onEdit?: () => void;        // ouvre le sheet header (uniquement si isEditing)
+  onToggleEdit?: () => void;
+  onEdit?: () => void;
 };
 
 export default function RecipeHeader({
   title,
   description,
   prepTime,
-  totalTime,
+  cookTime,
   onBack,
   onShare,
   isEditing = false,
@@ -30,13 +29,12 @@ export default function RecipeHeader({
 }: RecipeHeaderProps) {
   return (
     <View style={[styles.header, isEditing && styles.headerEditing]}>
+      {/* Top row: back + toggle edit/share */}
       <View style={styles.headerTop}>
         <Pressable onPress={onBack} style={styles.iconButton} hitSlop={8}>
           <ArrowLeft size={22} color={Colors.textPrimary} />
         </Pressable>
-
         <View style={styles.topRight}>
-          {/* Bouton bascule édition — crayon pour activer, X pour quitter */}
           {onToggleEdit && (
             <Pressable onPress={onToggleEdit} style={styles.iconButton} hitSlop={8}>
               {isEditing
@@ -53,35 +51,31 @@ export default function RecipeHeader({
         </View>
       </View>
 
-      <View style={styles.headerMeta}>
-        <View style={styles.headerLeft}>
-          <View style={styles.titleRow}>
-            <Text style={styles.title}>{title}</Text>
-            {/* Crayon du titre — uniquement visible en mode édition */}
-            {isEditing && onEdit && (
-              <Pressable onPress={onEdit} hitSlop={8} style={styles.titleEditButton}>
-                <Pencil size={16} color={Colors.primaryLight} />
-              </Pressable>
-            )}
-          </View>
+      {/* Title */}
+      <Text style={styles.title}>{title}</Text>
 
-          {description ? (
-            <Text style={styles.description} numberOfLines={2}>
-              {description}
-            </Text>
-          ) : null}
+      {/* Description */}
+      {description ? (
+        <Text style={styles.description} numberOfLines={2}>{description}</Text>
+      ) : null}
+
+      {/* Times row + edit pencil below times */}
+      <View style={styles.timesRow}>
+        <View style={styles.timeItem}>
+          <Clock size={14} color={Colors.textSecondary} />
+          <Text style={styles.timeText}>{prepTime}</Text>
+        </View>
+        <View style={styles.timeItem}>
+          <Flame size={14} color={Colors.textSecondary} />
+          <Text style={styles.timeText}>{cookTime}</Text>
         </View>
 
-        <View style={styles.headerRight}>
-          <View style={styles.timeRow}>
-            <Clock size={14} color={Colors.textSecondary} />
-            <Text style={styles.timeText}>{prepTime}</Text>
-          </View>
-          <View style={styles.timeRow}>
-            <Timer size={14} color={Colors.textSecondary} />
-            <Text style={styles.timeText}>{totalTime}</Text>
-          </View>
-        </View>
+        {/* Crayon édition — aligné à droite sur la même ligne que les temps */}
+        {isEditing && onEdit && (
+          <Pressable onPress={onEdit} hitSlop={8} style={styles.editTimesButton}>
+            <Pencil size={15} color={Colors.primaryLight} />
+          </Pressable>
+        )}
       </View>
 
       {isEditing && (
@@ -108,7 +102,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 6,
+    marginBottom: 8,
   },
 
   topRight: {
@@ -121,50 +115,29 @@ const styles = StyleSheet.create({
     padding: 4,
   },
 
-  headerMeta: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-
-  headerLeft: {
-    flex: 1,
-    marginRight: 12,
-  },
-
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flexWrap: "wrap",
-  },
-
   title: {
     fontSize: FontSize.xxxl,
     fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
     lineHeight: 34,
-  },
-
-  titleEditButton: {
-    padding: 2,
-    marginTop: 4,
+    marginBottom: 4,
   },
 
   description: {
     fontSize: FontSize.md,
     fontWeight: FontWeight.regular,
     color: Colors.textSecondary,
-    marginTop: 4,
+    marginBottom: 8,
     lineHeight: 20,
   },
 
-  headerRight: {
-    alignItems: "flex-end",
-    gap: 4,
+  timesRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
   },
 
-  timeRow: {
+  timeItem: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
@@ -173,6 +146,11 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
+  },
+
+  editTimesButton: {
+    marginLeft: "auto",
+    padding: 4,
   },
 
   editingBanner: {

@@ -1,16 +1,10 @@
 // src/components/ui/Recipe/PreparationList.tsx
-import { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  Pressable,
-  ScrollView,
-} from "react-native";
-import { Pencil, Check, Plus, Trash2 } from "lucide-react-native";
+import { useState, useEffect } from "react";
+import { View, Text, TextInput, StyleSheet, Pressable } from "react-native";
+import { Trash2, Check } from "lucide-react-native";
 import { Colors } from "../../../constants/colors";
 import { FontSize, FontWeight } from "../../../constants/typography";
+import OutlineButton from "@/src/components/ui/OutlineButton";
 
 type PreparationListProps = {
   steps: string[];
@@ -18,43 +12,49 @@ type PreparationListProps = {
 };
 
 export default function PreparationList({ steps, onSave }: PreparationListProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const isEditable = !!onSave;
   const [localSteps, setLocalSteps] = useState<string[]>(steps);
+  const [pendingStep, setPendingStep] = useState<string | null>(null); // étape en cours de saisie
+
+  useEffect(() => {
+    setLocalSteps(steps);
+  }, [steps]);
 
   const handleEdit = (index: number, text: string) => {
-    setLocalSteps((prev) => prev.map((s, i) => (i === index ? text : s)));
-  };
-
-  const handleAdd = () => {
-    setLocalSteps((prev) => [...prev, ""]);
+    const updated = localSteps.map((s, i) => (i === index ? text : s));
+    setLocalSteps(updated);
+    onSave?.(updated.filter((s) => s.trim().length > 0));
   };
 
   const handleDelete = (index: number) => {
-    setLocalSteps((prev) => prev.filter((_, i) => i !== index));
+    const updated = localSteps.filter((_, i) => i !== index);
+    setLocalSteps(updated);
+    onSave?.(updated.filter((s) => s.trim().length > 0));
   };
 
-  const handleSave = () => {
-    const cleaned = localSteps.filter((s) => s.trim().length > 0);
-    setLocalSteps(cleaned);
-    onSave?.(cleaned);
-    setIsEditing(false);
-  };
-
-  const handleCancelEdit = () => {
-    setLocalSteps(steps);
-    setIsEditing(false);
+  // Confirme l'ajout de la nouvelle étape
+  const handleConfirmAdd = () => {
+    if (!pendingStep || pendingStep.trim().length === 0) {
+      setPendingStep(null);
+      return;
+    }
+    const updated = [...localSteps, pendingStep.trim()];
+    setLocalSteps(updated);
+    onSave?.(updated);
+    setPendingStep(null);
   };
 
   return (
     <View>
       <View style={styles.list}>
-        {(isEditing ? localSteps : steps).map((step, index) => (
+        {/* Étapes existantes */}
+        {localSteps.map((step, index) => (
           <View key={index} style={styles.row}>
-            <View style={[styles.stepNumber, isEditing && styles.stepNumberEditing]}>
+            <View style={[styles.stepNumber, isEditable && styles.stepNumberEditing]}>
               <Text style={styles.stepNumberText}>{index + 1}</Text>
             </View>
 
-            {isEditing ? (
+            {isEditable ? (
               <View style={styles.editRow}>
                 <TextInput
                   style={styles.stepInput}
@@ -63,13 +63,8 @@ export default function PreparationList({ steps, onSave }: PreparationListProps)
                   multiline
                   placeholder="Décrivez cette étape..."
                   placeholderTextColor={Colors.textSecondary}
-                  autoFocus={index === localSteps.length - 1 && step === ""}
                 />
-                <Pressable
-                  onPress={() => handleDelete(index)}
-                  hitSlop={8}
-                  style={styles.deleteButton}
-                >
+                <Pressable onPress={() => handleDelete(index)} hitSlop={8} style={styles.actionButton}>
                   <Trash2 size={16} color={Colors.error} />
                 </Pressable>
               </View>
@@ -78,48 +73,47 @@ export default function PreparationList({ steps, onSave }: PreparationListProps)
             )}
           </View>
         ))}
+
+        {/* Nouvelle étape en cours de saisie */}
+        {pendingStep !== null && (
+          <View style={styles.row}>
+            <View style={[styles.stepNumber, styles.stepNumberEditing]}>
+              <Text style={styles.stepNumberText}>{localSteps.length + 1}</Text>
+            </View>
+            <View style={styles.editRow}>
+              <TextInput
+                style={styles.stepInput}
+                value={pendingStep}
+                onChangeText={setPendingStep}
+                multiline
+                placeholder="Décrivez cette étape..."
+                placeholderTextColor={Colors.textSecondary}
+                autoFocus
+              />
+              <Pressable
+                onPress={handleConfirmAdd}
+                hitSlop={8}
+                style={styles.actionButton}
+              >
+                <Check
+                  size={18}
+                  color={pendingStep.trim().length > 0 ? Colors.primaryLight : Colors.border}
+                  strokeWidth={2.5}
+                />
+              </Pressable>
+            </View>
+          </View>
+        )}
       </View>
 
-      {/* Add step button — only in edit mode */}
-      {isEditing && (
-        <Pressable
-          style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
-          onPress={handleAdd}
-        >
-          <Plus size={16} color={Colors.primaryButton} strokeWidth={2.5} />
-          <Text style={styles.addButtonText}>Ajouter une étape</Text>
-        </Pressable>
-      )}
-
-      {/* Action buttons */}
-      {onSave && (
-        <View style={styles.bottomRow}>
-          {isEditing ? (
-            <>
-              <Pressable style={styles.cancelButton} onPress={handleCancelEdit}>
-                <Text style={styles.cancelText}>Annuler</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.saveButton,
-                  pressed && styles.saveButtonPressed,
-                ]}
-                onPress={handleSave}
-              >
-                <Check size={16} color={Colors.surface} strokeWidth={2.5} />
-                <Text style={styles.saveText}>Enregistrer</Text>
-              </Pressable>
-            </>
-          ) : (
-            <Pressable
-              style={styles.editButton}
-              onPress={() => setIsEditing(true)}
-              hitSlop={8}
-            >
-              <Pencil size={18} color={Colors.primaryLight} />
-            </Pressable>
-          )}
-        </View>
+      {/* Bouton ajouter — masqué si une saisie est déjà en cours */}
+      {isEditable && pendingStep === null && (
+        <OutlineButton
+          title="Ajouter une étape"
+          onPress={() => setPendingStep("")}
+          color={Colors.primaryLight}
+          backgroundColor={Colors.cardLight}
+        />
       )}
     </View>
   );
@@ -186,76 +180,8 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
 
-  deleteButton: {
+  actionButton: {
     padding: 4,
     marginTop: 10,
-  },
-
-  addButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderWidth: 1.5,
-    borderColor: Colors.primaryButton,
-    borderRadius: 12,
-    paddingVertical: 12,
-    marginBottom: 16,
-  },
-
-  addButtonPressed: {
-    backgroundColor: Colors.cardLight,
-  },
-
-  addButtonText: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.semibold,
-    color: Colors.primaryButton,
-  },
-
-  bottomRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 4,
-  },
-
-  editButton: {
-    padding: 4,
-  },
-
-  cancelButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-
-  cancelText: {
-    fontSize: FontSize.md,
-    color: Colors.textSecondary,
-    fontWeight: FontWeight.medium,
-  },
-
-  saveButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: Colors.primaryButton,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-
-  saveButtonPressed: {
-    backgroundColor: Colors.primaryDarkButton,
-  },
-
-  saveText: {
-    fontSize: FontSize.md,
-    color: Colors.surface,
-    fontWeight: FontWeight.bold,
   },
 });
