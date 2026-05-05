@@ -28,7 +28,7 @@ import { UpsertCommentReactionDto } from './dto/upsert-comment-reaction.dto';
 
 @Controller('recipes')
 export class RecipesController {
-  constructor(private readonly recipesService: RecipesService) {}
+  constructor(private readonly recipesService: RecipesService) { }
 
   @UseGuards(JwtAuthGuard)
   @Post()
@@ -58,19 +58,19 @@ export class RecipesController {
     return this.recipesService.findOne(recipeID);
   }
 
-    @UseGuards(JwtAuthGuard)
-    @Patch(':recipeID/photo')
-    updateRecipePhoto(
-      @Req() req: AuthenticatedRequest,
-      @Param('recipeID', ParseIntPipe) recipeID: number,
-      @Body() dto: UpdateRecipePhotoDto,
-    ) {
-      return this.recipesService.updateRecipePhoto(
-        req.user.userID,
-        recipeID,
-        dto.photo,
-      );
-    }
+  @UseGuards(JwtAuthGuard)
+  @Patch(':recipeID/photo')
+  updateRecipePhoto(
+    @Req() req: AuthenticatedRequest,
+    @Param('recipeID', ParseIntPipe) recipeID: number,
+    @Body() dto: UpdateRecipePhotoDto,
+  ) {
+    return this.recipesService.updateRecipePhoto(
+      req.user.userID,
+      recipeID,
+      dto.photo,
+    );
+  }
 
   @UseGuards(JwtAuthGuard)
   @Patch(':recipeID')
@@ -202,13 +202,13 @@ export class RecipesController {
 
   @UseGuards(JwtAuthGuard)
   @Delete('reviews/:reviewID')
-  removeReview(  
+  removeReview(
     @Req() req: AuthenticatedRequest,
     @Param('reviewID', ParseIntPipe) reviewID: number
   ) {
     return this.recipesService.removeReview(req.user.userID, reviewID);
   }
-  
+
   @Get(':recipeID/comments')
   findComments(@Param('recipeID', ParseIntPipe) recipeID: number) {
     return this.recipesService.findComments(recipeID);

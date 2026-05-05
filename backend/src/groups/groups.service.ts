@@ -12,7 +12,7 @@ import { AddGroupRecipeDto } from './dto/add-group-recipe.dto';
 
 @Injectable()
 export class GroupsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   private readonly include = {
     members: {
@@ -25,13 +25,6 @@ export class GroupsService {
         recipe: {
           include: {
             creator: true,
-            ingredients: {
-              include: {
-                ingredient: true,
-                unit: true,
-              },
-            },
-            steps: { orderBy: { order: 'asc' as const } },
           },
         },
       },
@@ -120,14 +113,14 @@ export class GroupsService {
     return this.assertGroupMember(userID, groupID);
   }
 
-  async update(userID: string,  groupID: number, updateGroupDto: UpdateGroupDto) {
+  async update(userID: string, groupID: number, updateGroupDto: UpdateGroupDto) {
     await this.assertGroupMember(userID, groupID);
 
-  return this.prisma.groups.update({
-    where: { groupID },
-    data: updateGroupDto,
-    include: this.include,
-  });
+    return this.prisma.groups.update({
+      where: { groupID },
+      data: updateGroupDto,
+      include: this.include,
+    });
   }
 
   /*

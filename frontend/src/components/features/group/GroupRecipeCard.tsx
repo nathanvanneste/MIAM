@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native'
 import { Check } from 'lucide-react-native'
-import { router } from 'expo-router'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '@/src/constants'
 import { RecipeDetail } from '@/src/services/recipes.service'
 import { getSignedRecipePhotoUrl } from '@/src/services/storage.service'
