@@ -85,7 +85,6 @@ model SavedRecipe {
 model Review {
   reviewID  Int      @id @default(autoincrement())
   rating    Int
-  comment   String?
   userID    String   @db.Uuid
   recipeID  Int
   createdAt DateTime @default(now()) @db.Timestamptz

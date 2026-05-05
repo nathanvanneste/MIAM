@@ -1,13 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { ArrowLeft, Pencil, X, Plus, UserPlus, ChefHat, Users } from 'lucide-react-native'
+import { ArrowLeft, Plus, UserPlus, ChefHat, Users, Trash2, ShoppingCart } from 'lucide-react-native'
 import { router } from 'expo-router'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '@/src/constants'
 import { Group } from '@/src/types/group'
-import { RecipeDetail } from '@/src/services/recipes.service'
 import { getGroup, removeRecipeFromGroup, leaveGroup } from '@/src/services/groups.service'
 import { groupColor } from '@/src/utils/groupColor'
+import { setPendingListID } from '@/src/utils/pendingListID'
 import UserAvatar from '@/src/components/ui/UserAvatar'
 import GroupRecipeCard from '@/src/components/features/group/GroupRecipeCard'
 import AddRecipeModal from '@/src/components/features/group/AddRecipeModal'
@@ -20,9 +20,12 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
     const [tab, setTab] = useState<Tab>('recipes')
-    const [isEditing, setIsEditing] = useState(false)
     const [showAddRecipe, setShowAddRecipe] = useState(false)
     const [showAddMember, setShowAddMember] = useState(false)
+    const [selectedIDs, setSelectedIDs] = useState<Set<number>>(new Set())
+
+    const isSelecting = selectedIDs.size > 0
+    const navigatingToList = useRef(false)
 
     const load = useCallback(async () => {
         try {
@@ -38,30 +41,41 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
     }, [groupID])
 
     const onRefresh = useCallback(() => { setRefreshing(true); load() }, [load])
-
     useEffect(() => { load() }, [load])
 
-    const handleRemoveRecipe = async (recipeID: number) => {
-        if (!group) return
-        const previous = group
-        setGroup({ ...group, recipes: group.recipes.filter(r => r.recipeID !== recipeID) })
-        try {
-            await removeRecipeFromGroup(groupID, recipeID)
-        } catch {
-            setGroup(previous)
-            Alert.alert('Erreur', 'Impossible de retirer cette recette.')
+    const handleLongPress = (recipeID: number) => {
+        setSelectedIDs(prev => new Set([...prev, recipeID]))
+    }
+
+    const handleCardPress = (recipeID: number) => {
+        if (isSelecting) {
+            setSelectedIDs(prev => {
+                const next = new Set(prev)
+                next.has(recipeID) ? next.delete(recipeID) : next.add(recipeID)
+                return next
+            })
+        } else {
+            router.push({ pathname: '/recipe/[recipeID]', params: { recipeID: recipeID.toString() } })
         }
     }
 
-    const handleRecipeAdded = () => {
-        load()
-        setShowAddRecipe(false)
+    const handleDeleteSelected = async () => {
+        if (!group || selectedIDs.size === 0) return
+        const toDelete = [...selectedIDs]
+        const previous = group
+        setGroup({ ...group, recipes: group.recipes.filter(r => !selectedIDs.has(r.recipeID)) })
+        setSelectedIDs(new Set())
+        try {
+            await Promise.all(toDelete.map(id => removeRecipeFromGroup(groupID, id)))
+        } catch {
+            setGroup(previous)
+            setSelectedIDs(new Set(toDelete))
+            Alert.alert('Erreur', 'Impossible de supprimer les recettes sélectionnées.')
+        }
     }
 
-    const handleMemberAdded = () => {
-        load()
-        setShowAddMember(false)
-    }
+    const handleRecipeAdded = () => { load(); setShowAddRecipe(false) }
+    const handleMemberAdded = () => { load(); setShowAddMember(false) }
 
     const handleLeave = () => {
         Alert.alert(
@@ -99,43 +113,56 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
         <SafeAreaView style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <TouchableOpacity
+                    onPress={isSelecting ? () => setSelectedIDs(new Set()) : () => router.back()}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
                     <ArrowLeft size={22} color={Colors.textPrimary} />
                 </TouchableOpacity>
                 <View style={styles.headerCenter}>
                     <View style={[styles.headerAvatar, { backgroundColor: groupBg }]}>
                         <Text style={styles.headerAvatarText}>{groupInitial}</Text>
                     </View>
-                    <Text style={styles.headerTitle} numberOfLines={1}>{group.name}</Text>
+                    <Text style={styles.headerTitle} numberOfLines={1}>
+                        {isSelecting ? `${selectedIDs.size} sélectionné${selectedIDs.size > 1 ? 's' : ''}` : group.name}
+                    </Text>
                 </View>
-                <TouchableOpacity
-                    onPress={() => setIsEditing(v => !v)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                    {isEditing
-                        ? <X size={22} color={Colors.primaryLight} />
-                        : <Pencil size={20} color={Colors.textPrimary} />
-                    }
-                </TouchableOpacity>
-            </View>
-
-            {/* Membres row (toujours visible) */}
-            <View style={styles.membersStrip}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.membersRow}>
-                    {group.members.map(m => (
-                        <View key={m.userID} style={styles.memberChip}>
-                            <UserAvatar user={m.user} size={32} />
-                            <Text style={styles.memberChipName} numberOfLines={1}>@{m.user.pseudo}</Text>
-                        </View>
-                    ))}
-                </ScrollView>
+                <View style={styles.headerActions}>
+                    <TouchableOpacity
+                        onPress={() => {
+                            if (navigatingToList.current) return
+                            navigatingToList.current = true
+                            if (group.shoppingList) setPendingListID(group.shoppingList.listID)
+                            router.navigate('/(tabs)/shopping-list')
+                            setTimeout(() => { navigatingToList.current = false }, 800)
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                        <ShoppingCart size={22} color={Colors.textSecondary} />
+                    </TouchableOpacity>
+                    {tab === 'recipes' ? (
+                        <TouchableOpacity
+                            onPress={() => setShowAddRecipe(true)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                            <Plus size={22} color={Colors.primary} />
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity
+                            onPress={() => setShowAddMember(true)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                            <UserPlus size={22} color={Colors.primary} />
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
 
             {/* Tabs */}
             <View style={styles.tabBar}>
                 <TouchableOpacity
                     style={[styles.tab, tab === 'recipes' && styles.tabActive]}
-                    onPress={() => setTab('recipes')}
+                    onPress={() => { setTab('recipes'); setSelectedIDs(new Set()) }}
                 >
                     <ChefHat size={16} color={tab === 'recipes' ? Colors.primary : Colors.textSecondary} />
                     <Text style={[styles.tabText, tab === 'recipes' && styles.tabTextActive]}>
@@ -144,7 +171,7 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.tab, tab === 'members' && styles.tabActive]}
-                    onPress={() => setTab('members')}
+                    onPress={() => { setTab('members'); setSelectedIDs(new Set()) }}
                 >
                     <Users size={16} color={tab === 'members' ? Colors.primary : Colors.textSecondary} />
                     <Text style={[styles.tabText, tab === 'members' && styles.tabTextActive]}>
@@ -160,32 +187,22 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
                     showsVerticalScrollIndicator={false}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
                 >
-                    {isEditing && (
-                        <TouchableOpacity style={styles.addRowBtn} onPress={() => setShowAddRecipe(true)}>
-                            <Plus size={18} color={Colors.primaryButton} />
-                            <Text style={styles.addRowBtnText}>Partager une de mes recettes</Text>
-                        </TouchableOpacity>
-                    )}
-
                     {group.recipes.length === 0 ? (
                         <View style={styles.tabEmpty}>
                             <ChefHat size={36} color={Colors.primaryMuted} />
                             <Text style={styles.tabEmptyTitle}>Aucune recette partagée</Text>
-                            <Text style={styles.tabEmptyText}>
-                                {isEditing
-                                    ? 'Appuie sur "Partager une recette" pour en ajouter'
-                                    : 'Active le mode édition pour partager une recette'
-                                }
-                            </Text>
+                            <Text style={styles.tabEmptyText}>Appuie sur + pour partager une recette</Text>
                         </View>
                     ) : (
                         <View style={styles.recipesGrid}>
                             {group.recipes.map(gr => (
                                 <GroupRecipeCard
                                     key={gr.recipeID}
-                                    recipe={gr.recipe as RecipeDetail}
-                                    isEditing={isEditing}
-                                    onRemove={() => handleRemoveRecipe(gr.recipeID)}
+                                    recipe={gr.recipe}
+                                    isSelecting={isSelecting}
+                                    selected={selectedIDs.has(gr.recipeID)}
+                                    onPress={() => handleCardPress(gr.recipeID)}
+                                    onLongPress={() => handleLongPress(gr.recipeID)}
                                 />
                             ))}
                         </View>
@@ -197,13 +214,6 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
                     showsVerticalScrollIndicator={false}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
                 >
-                    {isEditing && (
-                        <TouchableOpacity style={styles.addRowBtn} onPress={() => setShowAddMember(true)}>
-                            <UserPlus size={18} color={Colors.primaryButton} />
-                            <Text style={styles.addRowBtnText}>Inviter un ami</Text>
-                        </TouchableOpacity>
-                    )}
-
                     {group.members.map(m => (
                         <View key={m.userID} style={styles.memberRow}>
                             <UserAvatar user={m.user} size={46} />
@@ -213,11 +223,25 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
                             </View>
                         </View>
                     ))}
-
                     <TouchableOpacity style={styles.leaveBtn} onPress={handleLeave}>
                         <Text style={styles.leaveBtnText}>Quitter le groupe</Text>
                     </TouchableOpacity>
                 </ScrollView>
+            )}
+
+            {/* Barre de suppression (mode sélection) */}
+            {isSelecting && (
+                <View style={styles.deleteBar}>
+                    <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteSelected}>
+                        <Trash2 size={18} color={Colors.surface} />
+                        <Text style={styles.deleteBtnText}>
+                            Supprimer ({selectedIDs.size})
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.cancelBtn} onPress={() => setSelectedIDs(new Set())}>
+                        <Text style={styles.cancelBtnText}>Annuler</Text>
+                    </TouchableOpacity>
+                </View>
             )}
 
             <AddRecipeModal
@@ -227,7 +251,6 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
                 onClose={() => setShowAddRecipe(false)}
                 onAdded={handleRecipeAdded}
             />
-
             <AddMemberModal
                 visible={showAddMember}
                 groupID={groupID}
@@ -250,6 +273,11 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.md,
         borderBottomWidth: 1,
         borderBottomColor: Colors.border,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
     },
     headerCenter: {
         flex: 1,
@@ -277,31 +305,6 @@ const styles = StyleSheet.create({
         flex: 1,
     },
 
-    membersStrip: {
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-        paddingVertical: Spacing.sm,
-    },
-    membersRow: {
-        paddingHorizontal: Spacing.xl,
-        gap: Spacing.sm,
-    },
-    memberChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.xs,
-        backgroundColor: Colors.cardLight,
-        borderRadius: BorderRadius.full,
-        paddingHorizontal: Spacing.sm,
-        paddingVertical: 4,
-    },
-    memberChipName: {
-        fontSize: FontSize.xs,
-        fontWeight: FontWeight.medium,
-        color: Colors.primary,
-        maxWidth: 80,
-    },
-
     tabBar: {
         flexDirection: 'row',
         borderBottomWidth: 1,
@@ -317,9 +320,7 @@ const styles = StyleSheet.create({
         borderBottomWidth: 2,
         borderBottomColor: 'transparent',
     },
-    tabActive: {
-        borderBottomColor: Colors.primary,
-    },
+    tabActive: { borderBottomColor: Colors.primary },
     tabText: {
         fontSize: FontSize.sm,
         fontWeight: FontWeight.medium,
@@ -333,24 +334,6 @@ const styles = StyleSheet.create({
     tabContent: {
         padding: Spacing.xl,
         paddingBottom: 40,
-    },
-
-    addRowBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: Spacing.sm,
-        borderWidth: 1.5,
-        borderColor: Colors.primaryButton,
-        borderRadius: BorderRadius.md,
-        paddingVertical: Spacing.sm,
-        paddingHorizontal: Spacing.md,
-        marginBottom: Spacing.md,
-        justifyContent: 'center',
-    },
-    addRowBtnText: {
-        fontSize: FontSize.md,
-        fontWeight: FontWeight.semibold,
-        color: Colors.primaryButton,
     },
 
     recipesGrid: {
@@ -407,5 +390,40 @@ const styles = StyleSheet.create({
     leaveBtnText: {
         fontSize: FontSize.sm,
         color: Colors.error,
+    },
+
+    deleteBar: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+        paddingHorizontal: Spacing.xl,
+        paddingVertical: Spacing.md,
+        borderTopWidth: 1,
+        borderTopColor: Colors.border,
+        backgroundColor: Colors.background,
+    },
+    deleteBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.sm,
+        backgroundColor: Colors.error,
+        borderRadius: BorderRadius.md,
+        paddingVertical: Spacing.md,
+    },
+    deleteBtnText: {
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
+        color: Colors.surface,
+    },
+    cancelBtn: {
+        paddingHorizontal: Spacing.lg,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    cancelBtnText: {
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.medium,
+        color: Colors.textSecondary,
     },
 })

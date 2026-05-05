@@ -1,20 +1,28 @@
 import { useState, useEffect, useRef } from "react";
-import { StyleSheet, ScrollView, ActivityIndicator, Alert, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { StyleSheet, ScrollView, ActivityIndicator, Alert, View, Text, Image, Pressable } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { ArrowLeft, X, Pencil, Share2, Bookmark, Camera, Clock, Flame } from "lucide-react-native";
 import { Colors } from "@/src/constants/colors";
-import RecipeHeader from "@/src/components/ui/Recipe/RecipeHeader";
+import { FontSize, FontWeight } from "@/src/constants/typography";
 import RecipeTabBar, { RecipeTab } from "@/src/components/ui/Recipe/RecipeTabBar";
 import IngredientsList from "@/src/components/ui/Recipe/IngredientsList";
 import PreparationList from "@/src/components/ui/Recipe/PreparationList";
 import EditHeaderSheet from "@/src/components/ui/Recipe/EditHeaderSheet";
 import PrimaryButton from "@/src/components/ui/PrimaryButton";
-import { getRecipeById, updateRecipe } from "@/src/services/recipes.service";
+import UserAvatar from "@/src/components/ui/UserAvatar";
+import { getRecipeById, updateRecipe, updateRecipePhoto } from "@/src/services/recipes.service";
 import { saveRecipe, unsaveRecipe } from "@/src/services/users.service";
+import { uploadRecipePhoto, getSignedRecipePhotoUrl } from "@/src/services/storage.service";
+import { supabase } from "@/src/config/supabase";
+import { groupColor } from "@/src/utils/groupColor";
 import type { RecipeDetail } from "@/src/services/recipes.service";
 import type { RecipeIngredient } from "@/src/types/recipeIngredient";
 import type { IngredientFormData } from "@/src/components/ui/Recipe/IngredientFormSheet";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useRouter } from "expo-router";
+
+const PHOTO_HEIGHT = 220;
 
 type RecipeScreenProps = {
   recipeID: number;
@@ -36,6 +44,7 @@ const toBackendIngredients = (ingredients: RecipeIngredient[]) =>
 export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
   const router = useRouter();
   const { user: currentUser } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [tab, setTab] = useState<RecipeTab>("ingredients");
   const [portions, setPortions] = useState<number>(1);
@@ -45,8 +54,10 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [headerSheetVisible, setHeaderSheetVisible] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
   const hasUnsavedChanges = useRef(false);
+  const recipeSnapshot = useRef<RecipeDetail | null>(null);
 
   const isOwner = !!recipe && !!currentUser && recipe.creator?.userID === currentUser.id;
 
@@ -58,6 +69,13 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
         setPortions(data.portion);
         if (currentUser) {
           setIsSaved(data.savedBy?.some(s => s.userID === currentUser.id) ?? false);
+        }
+        if (data.photo) {
+          if (data.photo.startsWith("http")) {
+            setPhotoUrl(data.photo);
+          } else {
+            getSignedRecipePhotoUrl(data.photo).then(setPhotoUrl).catch(() => {});
+          }
         }
       } catch (e) {
         console.error("Erreur chargement recette", e);
@@ -71,25 +89,33 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
   const markUnsaved = () => { hasUnsavedChanges.current = true; };
 
   const handleToggleEdit = () => {
-    if (isEditing && hasUnsavedChanges.current) {
-      Alert.alert(
-        "Modifications non enregistrées",
-        "Vous avez des modifications non enregistrées. Voulez-vous les annuler ?",
-        [
-          { text: "Continuer l'édition", style: "cancel" },
-          {
-            text: "Annuler les modifications",
-            style: "destructive",
-            onPress: () => {
-              hasUnsavedChanges.current = false;
-              setIsEditing(false);
+    if (isEditing) {
+      if (hasUnsavedChanges.current) {
+        Alert.alert(
+          "Modifications non enregistrées",
+          "Vous avez des modifications non enregistrées. Voulez-vous les annuler ?",
+          [
+            { text: "Continuer l'édition", style: "cancel" },
+            {
+              text: "Annuler les modifications",
+              style: "destructive",
+              onPress: () => {
+                if (recipeSnapshot.current) setRecipe(recipeSnapshot.current);
+                recipeSnapshot.current = null;
+                hasUnsavedChanges.current = false;
+                setIsEditing(false);
+              },
             },
-          },
-        ]
-      );
+          ]
+        );
+      } else {
+        recipeSnapshot.current = null;
+        setIsEditing(false);
+      }
     } else {
+      recipeSnapshot.current = recipe;
       hasUnsavedChanges.current = false;
-      setIsEditing((v) => !v);
+      setIsEditing(true);
     }
   };
 
@@ -124,6 +150,7 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
           order: i + 1,
         })),
       });
+      recipeSnapshot.current = null;
       hasUnsavedChanges.current = false;
       setIsEditing(false);
     } catch {
@@ -137,6 +164,32 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
     if (!recipe) return;
     setRecipe({ ...recipe, name: data.title, description: data.description, prepTime: data.prepTime, cookTime: data.cookTime });
     markUnsaved();
+  };
+
+  const handleChangePhoto = () => {
+    Alert.alert("Photo de la recette", undefined, [
+      { text: "Prendre une photo", onPress: () => pickPhoto(true) },
+      { text: "Choisir depuis la galerie", onPress: () => pickPhoto(false) },
+      { text: "Annuler", style: "cancel" },
+    ]);
+  };
+
+  const pickPhoto = async (fromCamera: boolean) => {
+    const result = fromCamera
+      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [16, 9], quality: 0.8 })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [16, 9], quality: 0.8 });
+    if (result.canceled) return;
+    const uri = result.assets[0].uri;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userID = sessionData.session?.user.id;
+    if (!userID) return;
+    try {
+      const path = await uploadRecipePhoto(uri, userID, recipeID);
+      await updateRecipePhoto(recipeID, path);
+      setPhotoUrl(uri);
+    } catch {
+      Alert.alert("Erreur", "Impossible de mettre à jour la photo.");
+    }
   };
 
   const handleAddIngredient = (data: IngredientFormData) => {
@@ -198,46 +251,110 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <RecipeHeader
-        title={recipe.name}
-        description={recipe.description}
-        prepTime={formatTime(recipe.prepTime)}
-        cookTime={formatTime(recipe.cookTime)}
-        creator={!isOwner ? recipe.creator : undefined}
-        isSaved={isSaved}
-        onBack={() => router.back()}
-        onShare={onShare}
-        isEditing={isEditing}
-        onToggleEdit={isOwner ? handleToggleEdit : undefined}
-        onEdit={isEditing ? () => setHeaderSheetVisible(true) : undefined}
-        onToggleSave={!isOwner ? handleToggleSave : undefined}
-      />
-
-      <RecipeTabBar activeTab={tab} onTabChange={setTab} />
-
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {tab === "ingredients" ? (
-          <IngredientsList
-            ingredients={recipe.ingredients}
-            basePortions={recipe.portion}
-            portions={portions}
-            categories={[]}
-            onIncrement={() => setPortions((p) => p + 1)}
-            onDecrement={() => setPortions((p) => Math.max(1, p - 1))}
-            onAddIngredient={isEditing ? handleAddIngredient : undefined}
-            onEditIngredient={isEditing ? handleEditIngredient : undefined}
-            onDeleteIngredient={isEditing ? handleDeleteIngredient : undefined}
-          />
-        ) : (
-          <PreparationList
-            steps={recipe.steps.map((s) => s.text)}
-            onSave={isEditing ? handleSaveSteps : undefined}
-          />
+      {/* Photo — derrière le scroll */}
+      <View style={[styles.photo, { backgroundColor: groupColor(recipe.name) }]}>
+        {photoUrl && (
+          <Image source={{ uri: photoUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
         )}
+      </View>
+
+      {/* Boutons de nav — au-dessus du scroll */}
+      <View style={[styles.navRow, { top: insets.top + 10 }]} pointerEvents="box-none">
+        <Pressable onPress={() => router.back()} style={styles.navBtn} hitSlop={8}>
+          <ArrowLeft size={22} color="#fff" />
+        </Pressable>
+        <View style={styles.navRight}>
+          {isOwner && isEditing && (
+            <Pressable onPress={handleChangePhoto} style={styles.navBtn} hitSlop={8}>
+              <Camera size={20} color="#fff" />
+            </Pressable>
+          )}
+          {isOwner && (
+            <Pressable onPress={handleToggleEdit} style={styles.navBtn} hitSlop={8}>
+              {isEditing
+                ? <X size={22} color="#fff" />
+                : <Pencil size={20} color="#fff" />
+              }
+            </Pressable>
+          )}
+          {!isOwner && (
+            <Pressable onPress={handleToggleSave} style={styles.navBtn} hitSlop={8}>
+              <Bookmark size={22} color="#fff" fill={isSaved ? "#fff" : "transparent"} />
+            </Pressable>
+          )}
+          {!isEditing && onShare && (
+            <Pressable onPress={onShare} style={styles.navBtn} hitSlop={8}>
+              <Share2 size={22} color="#fff" />
+            </Pressable>
+          )}
+        </View>
+      </View>
+
+      {/* Scroll — passe au-dessus de la photo */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={{ paddingTop: PHOTO_HEIGHT }}
+        showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={[1]}
+      >
+        {/* 0 — infos recette (carte qui glisse sur la photo) */}
+        <View style={[styles.infoCard, isEditing && styles.infoCardEditing]}>
+          <Text style={styles.title}>{recipe.name}</Text>
+          {recipe.description ? (
+            <Text style={styles.description} numberOfLines={3}>{recipe.description}</Text>
+          ) : null}
+          {!isOwner && recipe.creator && (
+            <View style={styles.creatorRow}>
+              <UserAvatar user={recipe.creator} size={18} />
+              <Text style={styles.creatorText}>@{recipe.creator.pseudo}</Text>
+            </View>
+          )}
+          <View style={styles.timesRow}>
+            <View style={styles.timeItem}>
+              <Clock size={14} color={Colors.textSecondary} />
+              <Text style={styles.timeText}>{formatTime(recipe.prepTime)}</Text>
+            </View>
+            <View style={styles.timeItem}>
+              <Flame size={14} color={Colors.textSecondary} />
+              <Text style={styles.timeText}>{formatTime(recipe.cookTime)}</Text>
+            </View>
+            {isEditing && (
+              <Pressable onPress={() => setHeaderSheetVisible(true)} hitSlop={8} style={styles.editTimesBtn}>
+                <Pencil size={15} color={Colors.primaryLight} />
+              </Pressable>
+            )}
+          </View>
+          {isEditing && (
+            <Text style={styles.editingBanner}>Mode édition activé</Text>
+          )}
+        </View>
+
+        {/* 1 — tab bar sticky */}
+        <View style={styles.tabBarWrapper}>
+          <RecipeTabBar activeTab={tab} onTabChange={setTab} />
+        </View>
+
+        {/* 2 — contenu */}
+        <View style={styles.contentWrapper}>
+          {tab === "ingredients" ? (
+            <IngredientsList
+              ingredients={recipe.ingredients}
+              basePortions={recipe.portion}
+              portions={portions}
+              categories={[]}
+              onIncrement={() => setPortions((p) => p + 1)}
+              onDecrement={() => setPortions((p) => Math.max(1, p - 1))}
+              onAddIngredient={isEditing ? handleAddIngredient : undefined}
+              onEditIngredient={isEditing ? handleEditIngredient : undefined}
+              onDeleteIngredient={isEditing ? handleDeleteIngredient : undefined}
+            />
+          ) : (
+            <PreparationList
+              steps={recipe.steps.map((s) => s.text)}
+              onSave={isEditing ? handleSaveSteps : undefined}
+            />
+          )}
+        </View>
       </ScrollView>
 
       {isEditing && (
@@ -266,14 +383,120 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.background },
-  content: {
-    flex: 1,
-    marginTop: 12,
-    marginHorizontal: 20,
-    backgroundColor: Colors.cardLight,
+
+  // Photo fixe derrière le scroll
+  photo: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: PHOTO_HEIGHT,
+  },
+  // Boutons nav au-dessus de tout
+  navRow: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+  },
+  navBtn: {
+    padding: 7,
+    backgroundColor: "rgba(0,0,0,0.35)",
     borderRadius: 20,
   },
-  contentContainer: { padding: 18, paddingBottom: 24 },
+  navRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  // Scroll transparent (la photo se voit à travers le paddingTop)
+  scroll: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+
+  // Carte infos : fond blanc + coins arrondis en haut (glisse sur la photo)
+  infoCard: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  infoCardEditing: {
+    borderBottomWidth: 1.5,
+    borderBottomColor: Colors.primaryLight,
+  },
+
+  title: {
+    fontSize: FontSize.xxxl,
+    fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
+    lineHeight: 34,
+    marginBottom: 4,
+  },
+  description: {
+    fontSize: FontSize.md,
+    color: Colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  creatorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  creatorText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+    color: Colors.primaryLight,
+  },
+  timesRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  timeItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  timeText: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  editTimesBtn: {
+    marginLeft: "auto",
+    padding: 4,
+  },
+  editingBanner: {
+    marginTop: 8,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.medium,
+    color: Colors.primaryLight,
+    textAlign: "center",
+  },
+
+  // Tab bar sticky avec fond pour couvrir la photo
+  tabBarWrapper: {
+    backgroundColor: Colors.background,
+    paddingVertical: 10,
+  },
+
+  // Contenu ingrédients / étapes
+  contentWrapper: {
+    backgroundColor: Colors.background,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+  },
+
   footer: {
     paddingHorizontal: 20,
     paddingVertical: 14,

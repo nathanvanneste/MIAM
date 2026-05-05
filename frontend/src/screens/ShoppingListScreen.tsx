@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useFocusEffect } from 'expo-router'
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal, KeyboardAvoidingView, Platform, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Trash2, Check, ChevronDown, ChevronUp, BookOpen } from 'lucide-react-native'
@@ -8,6 +9,9 @@ import { toggleItem, removeItem, addItem, updateItem, getMyList, getMyGroups, ge
 import { supabase } from '@/src/config/supabase'
 import AddShoppingItem from '@/src/components/features/shopping/AddShoppingItem'
 import ImportRecipeModal from '@/src/components/features/shopping/ImportRecipeModal'
+import { consumePendingListID } from '@/src/utils/pendingListID'
+
+let channelSeq = 0
 
 export default function ShoppingListScreen() {
     const [lists, setLists] = useState<ShoppingList[]>([])
@@ -17,6 +21,7 @@ export default function ShoppingListScreen() {
     const [showImportModal, setShowImportModal] = useState(false)
     const [showListPicker, setShowListPicker] = useState(false)
     const [checkedExpanded, setCheckedExpanded] = useState(false)
+    const [groupRecipesMap, setGroupRecipesMap] = useState<Record<number, any[]>>({})
 
     const fetchLists = useCallback(async () => {
         try {
@@ -27,13 +32,19 @@ export default function ShoppingListScreen() {
             const allLists: ShoppingList[] = []
             if (myListResult.status === 'fulfilled') allLists.push(myListResult.value)
             if (myGroupsResult.status === 'fulfilled') {
+                const recipesMap: Record<number, any[]> = {}
                 const groupLists = myGroupsResult.value
                     .filter((g: any) => g.shoppingList)
-                    .map((g: any) => ({ ...g.shoppingList, name: g.name }))
+                    .map((g: any) => {
+                        if (g.groupID && g.recipes) {
+                            recipesMap[g.groupID] = g.recipes.map((gr: any) => gr.recipe)
+                        }
+                        return { ...g.shoppingList, name: g.name }
+                    })
+                setGroupRecipesMap(recipesMap)
                 allLists.push(...groupLists)
             }
             setLists(allLists)
-            // Preserve current selection on refresh, set first list on initial load
             setSelectedListID(prev => prev !== 0 ? prev : (allLists[0]?.listID ?? 0))
         } finally {
             setLoading(false)
@@ -42,6 +53,11 @@ export default function ShoppingListScreen() {
     }, [])
 
     useEffect(() => { fetchLists() }, [fetchLists])
+
+    useFocusEffect(useCallback(() => {
+        const id = consumePendingListID()
+        if (id) setSelectedListID(id)
+    }, []))
 
     const onRefresh = useCallback(() => {
         setRefreshing(true)
@@ -52,8 +68,9 @@ export default function ShoppingListScreen() {
     useEffect(() => {
         if (!selectedListID) return
 
+        const seq = ++channelSeq
         const channel = supabase
-            .channel(`shopping-items-${selectedListID}`)
+            .channel(`shopping-items-${selectedListID}-${seq}`)
             .on('postgres_changes', {
                 event: '*',
                 schema: 'public',
@@ -88,7 +105,7 @@ export default function ShoppingListScreen() {
             })
             .subscribe()
 
-        return () => { supabase.removeChannel(channel) }
+        return () => { channel.unsubscribe(); supabase.removeChannel(channel) }
     }, [selectedListID])
 
     if (loading) return (
@@ -391,6 +408,7 @@ export default function ShoppingListScreen() {
                 visible={showImportModal}
                 listID={selectedListID}
                 currentItems={currentList.items}
+                groupRecipes={currentList.groupID ? groupRecipesMap[currentList.groupID] : undefined}
                 onClose={() => setShowImportModal(false)}
                 onImportDone={handleImportDone}
             />

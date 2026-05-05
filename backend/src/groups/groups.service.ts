@@ -22,7 +22,18 @@ export class GroupsService {
     },
     recipes: {
       include: {
-        recipe: true,
+        recipe: {
+          include: {
+            creator: true,
+            ingredients: {
+              include: {
+                ingredient: true,
+                unit: true,
+              },
+            },
+            steps: { orderBy: { order: 'asc' as const } },
+          },
+        },
       },
     },
     shoppingList: {

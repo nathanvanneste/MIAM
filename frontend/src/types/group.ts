@@ -1,4 +1,4 @@
-import { Recipe } from './recipe'
+import { RecipeDetail } from '../services/recipes.service'
 
 export type GroupUser = {
     userID: string
@@ -17,7 +17,7 @@ export type GroupMember = {
 export type GroupRecipe = {
     groupID: number
     recipeID: number
-    recipe: Recipe
+    recipe: RecipeDetail
 }
 
 export type Group = {
@@ -25,4 +25,5 @@ export type Group = {
     name: string
     members: GroupMember[]
     recipes: GroupRecipe[]
+    shoppingList?: { listID: number } | null
 }

@@ -1,14 +1,16 @@
-import { View, Text, StyleSheet, Pressable } from "react-native";
-import { ArrowLeft, Share2, Clock, Flame, Pencil, X, Bookmark } from "lucide-react-native";
+import { View, Text, StyleSheet, Pressable, Image } from "react-native";
+import { ArrowLeft, Share2, Clock, Flame, Pencil, X, Bookmark, Camera } from "lucide-react-native";
 import { Colors } from "@/src/constants/colors";
 import { FontSize, FontWeight } from "@/src/constants/typography";
 import UserAvatar from "../UserAvatar";
+import { groupColor } from "@/src/utils/groupColor";
 
 type RecipeHeaderProps = {
   title: string;
   description?: string | null;
   prepTime: string;
   cookTime: string;
+  photoUrl?: string | null;
   creator?: { pseudo: string; avatar?: string | null };
   isSaved?: boolean;
   onBack?: () => void;
@@ -17,6 +19,7 @@ type RecipeHeaderProps = {
   onToggleEdit?: () => void;
   onEdit?: () => void;
   onToggleSave?: () => void;
+  onChangePhoto?: () => void;
 };
 
 export default function RecipeHeader({
@@ -24,6 +27,7 @@ export default function RecipeHeader({
   description,
   prepTime,
   cookTime,
+  photoUrl,
   creator,
   isSaved,
   onBack,
@@ -32,86 +36,98 @@ export default function RecipeHeader({
   onToggleEdit,
   onEdit,
   onToggleSave,
+  onChangePhoto,
 }: RecipeHeaderProps) {
   return (
     <View style={[styles.header, isEditing && styles.headerEditing]}>
-      {/* Top row: back + actions */}
-      <View style={styles.headerTop}>
-        <Pressable onPress={onBack} style={styles.iconButton} hitSlop={8}>
-          <ArrowLeft size={22} color={Colors.textPrimary} />
-        </Pressable>
-        <View style={styles.topRight}>
-          {onToggleEdit && (
-            <Pressable onPress={onToggleEdit} style={styles.iconButton} hitSlop={8}>
-              {isEditing
-                ? <X size={22} color={Colors.primaryLight} />
-                : <Pencil size={20} color={Colors.textPrimary} />
-              }
-            </Pressable>
-          )}
-          {onToggleSave !== undefined && (
-            <Pressable onPress={onToggleSave} style={styles.iconButton} hitSlop={8}>
-              <Bookmark
-                size={22}
-                color={Colors.primaryLight}
-                fill={isSaved ? Colors.primaryLight : 'transparent'}
-              />
-            </Pressable>
-          )}
-          {!isEditing && onShare && (
-            <Pressable onPress={onShare} style={styles.iconButton} hitSlop={8}>
-              <Share2 size={22} color={Colors.textPrimary} />
-            </Pressable>
-          )}
-        </View>
-      </View>
+      {/* Hero photo */}
+      <View style={styles.heroContainer}>
+        {photoUrl ? (
+          <Image source={{ uri: photoUrl }} style={styles.heroImage} resizeMode="cover" />
+        ) : (
+          <View style={[styles.heroImage, { backgroundColor: groupColor(title) }]} />
+        )}
 
-      {/* Title */}
-      <Text style={styles.title}>{title}</Text>
-
-      {/* Description */}
-      {description ? (
-        <Text style={styles.description} numberOfLines={2}>{description}</Text>
-      ) : null}
-
-      {/* Creator (non-owner view) */}
-      {creator && (
-        <View style={styles.creatorRow}>
-          <UserAvatar user={creator} size={18} />
-          <Text style={styles.creatorText}>@{creator.pseudo}</Text>
-        </View>
-      )}
-
-      {/* Times row */}
-      <View style={styles.timesRow}>
-        <View style={styles.timeItem}>
-          <Clock size={14} color={Colors.textSecondary} />
-          <Text style={styles.timeText}>{prepTime}</Text>
-        </View>
-        <View style={styles.timeItem}>
-          <Flame size={14} color={Colors.textSecondary} />
-          <Text style={styles.timeText}>{cookTime}</Text>
+        {/* Boutons overlay top */}
+        <View style={styles.heroTop}>
+          <Pressable onPress={onBack} style={styles.heroIconBtn} hitSlop={8}>
+            <ArrowLeft size={22} color="#fff" />
+          </Pressable>
+          <View style={styles.topRight}>
+            {onToggleEdit && (
+              <Pressable onPress={onToggleEdit} style={styles.heroIconBtn} hitSlop={8}>
+                {isEditing
+                  ? <X size={22} color="#fff" />
+                  : <Pencil size={20} color="#fff" />
+                }
+              </Pressable>
+            )}
+            {onToggleSave !== undefined && (
+              <Pressable onPress={onToggleSave} style={styles.heroIconBtn} hitSlop={8}>
+                <Bookmark
+                  size={22}
+                  color="#fff"
+                  fill={isSaved ? "#fff" : "transparent"}
+                />
+              </Pressable>
+            )}
+            {!isEditing && onShare && (
+              <Pressable onPress={onShare} style={styles.heroIconBtn} hitSlop={8}>
+                <Share2 size={22} color="#fff" />
+              </Pressable>
+            )}
+          </View>
         </View>
 
-        {isEditing && onEdit && (
-          <Pressable onPress={onEdit} hitSlop={8} style={styles.editTimesButton}>
-            <Pencil size={15} color={Colors.primaryLight} />
+        {/* Bouton changer photo (mode édition) */}
+        {isEditing && onChangePhoto && (
+          <Pressable style={styles.cameraBtn} onPress={onChangePhoto} hitSlop={8}>
+            <Camera size={18} color="#fff" />
           </Pressable>
         )}
       </View>
 
-      {isEditing && (
-        <Text style={styles.editingBanner}>Mode édition activé</Text>
-      )}
+      {/* Contenu texte */}
+      <View style={styles.content}>
+        <Text style={styles.title}>{title}</Text>
+
+        {description ? (
+          <Text style={styles.description} numberOfLines={2}>{description}</Text>
+        ) : null}
+
+        {creator && (
+          <View style={styles.creatorRow}>
+            <UserAvatar user={creator} size={18} />
+            <Text style={styles.creatorText}>@{creator.pseudo}</Text>
+          </View>
+        )}
+
+        <View style={styles.timesRow}>
+          <View style={styles.timeItem}>
+            <Clock size={14} color={Colors.textSecondary} />
+            <Text style={styles.timeText}>{prepTime}</Text>
+          </View>
+          <View style={styles.timeItem}>
+            <Flame size={14} color={Colors.textSecondary} />
+            <Text style={styles.timeText}>{cookTime}</Text>
+          </View>
+          {isEditing && onEdit && (
+            <Pressable onPress={onEdit} hitSlop={8} style={styles.editTimesButton}>
+              <Pencil size={15} color={Colors.primaryLight} />
+            </Pressable>
+          )}
+        </View>
+
+        {isEditing && (
+          <Text style={styles.editingBanner}>Mode édition activé</Text>
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 12,
     backgroundColor: Colors.background,
   },
 
@@ -120,11 +136,30 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.primaryLight,
   },
 
-  headerTop: {
+  heroContainer: {
+    position: "relative",
+  },
+
+  heroImage: {
+    width: "100%",
+    height: 200,
+  },
+
+  heroTop: {
+    position: "absolute",
+    top: 10,
+    left: 0,
+    right: 0,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    paddingHorizontal: 16,
+  },
+
+  heroIconBtn: {
+    padding: 7,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    borderRadius: 20,
   },
 
   topRight: {
@@ -133,8 +168,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
-  iconButton: {
-    padding: 4,
+  cameraBtn: {
+    position: "absolute",
+    bottom: 12,
+    right: 16,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderRadius: 20,
+    padding: 9,
+  },
+
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
 
   title: {
@@ -159,6 +205,7 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: 8,
   },
+
   creatorText: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.medium,

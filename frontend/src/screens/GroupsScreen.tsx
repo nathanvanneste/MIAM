@@ -1,24 +1,51 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Plus, Users } from 'lucide-react-native'
-import { router } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '@/src/constants'
 import { Group } from '@/src/types/group'
 import { getMyGroups } from '@/src/services/groups.service'
 import GroupCard from '@/src/components/ui/Group/GroupCard'
 import CreateGroupModal from '@/src/components/features/group/CreateGroupModal'
 
+const HISTORY_KEY = 'group_open_history'
+
+async function getHistory(): Promise<Record<string, number>> {
+    try {
+        const raw = await AsyncStorage.getItem(HISTORY_KEY)
+        return raw ? JSON.parse(raw) : {}
+    } catch { return {} }
+}
+
+async function recordOpen(groupID: number): Promise<void> {
+    try {
+        const h = await getHistory()
+        h[groupID] = Date.now()
+        await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(h))
+    } catch {}
+}
+
+function sortByHistory(groups: Group[], history: Record<string, number>): Group[] {
+    return [...groups].sort((a, b) => {
+        const ta = history[a.groupID] ?? 0
+        const tb = history[b.groupID] ?? 0
+        return tb - ta
+    })
+}
+
 export default function GroupsScreen() {
     const [groups, setGroups] = useState<Group[]>([])
+    const [history, setHistory] = useState<Record<string, number>>({})
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
     const [showCreate, setShowCreate] = useState(false)
 
     const load = useCallback(async () => {
-        setLoading(true)
         try {
-            const g = await getMyGroups()
+            const [g, h] = await Promise.all([getMyGroups(), getHistory()])
+            setHistory(h)
             setGroups(g)
         } catch {
         } finally {
@@ -28,13 +55,26 @@ export default function GroupsScreen() {
     }, [])
 
     const onRefresh = useCallback(() => { setRefreshing(true); load() }, [load])
-
     useEffect(() => { load() }, [load])
+
+    const initialFocus = useRef(true)
+    useFocusEffect(useCallback(() => {
+        if (initialFocus.current) { initialFocus.current = false; return }
+        getHistory().then(setHistory)
+    }, []))
+
+    const handleOpen = (groupID: number) => {
+        recordOpen(groupID)
+        setHistory(prev => ({ ...prev, [groupID]: Date.now() }))
+        router.push({ pathname: '/group/[groupID]', params: { groupID: groupID.toString() } })
+    }
 
     const handleCreated = (group: Group) => {
         setGroups(prev => [group, ...prev])
         setShowCreate(false)
     }
+
+    const sorted = sortByHistory(groups, history)
 
     return (
         <SafeAreaView style={styles.container}>
@@ -69,16 +109,13 @@ export default function GroupsScreen() {
                     showsVerticalScrollIndicator={false}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
                 >
-                    {groups.map(group => (
+                    {sorted.map(group => (
                         <GroupCard
                             key={group.groupID}
                             name={group.name}
                             membersCount={group.members.length}
                             recipesCount={group.recipes.length}
-                            onPress={() => router.push({
-                                pathname: '/group/[groupID]',
-                                params: { groupID: group.groupID.toString() },
-                            })}
+                            onPress={() => handleOpen(group.groupID)}
                         />
                     ))}
                 </ScrollView>

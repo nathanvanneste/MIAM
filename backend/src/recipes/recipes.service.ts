@@ -18,7 +18,7 @@ import { AddRecipeTagDto } from './dto/add-recipe-tag.dto';
 
 @Injectable()
 export class RecipesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   private readonly recipeInclude = {
     creator: true,
@@ -114,35 +114,35 @@ export class RecipesService {
 
         steps: steps
           ? {
-              create: steps.map((step) => ({
-                text: step.text,
-                order: step.order,
-              })),
-            }
+            create: steps.map((step) => ({
+              text: step.text,
+              order: step.order,
+            })),
+          }
           : undefined,
 
         ingredients: ingredients
           ? {
-              create: ingredients.map((recipeIngredient) => ({
-                quantity: recipeIngredient.quantity,
-                ingredient: {
-                  connect: { ingredientID: recipeIngredient.ingredientID },
-                },
-                unit: {
-                  connect: { unitID: recipeIngredient.unitID },
-                },
-              })),
-            }
+            create: ingredients.map((recipeIngredient) => ({
+              quantity: recipeIngredient.quantity,
+              ingredient: {
+                connect: { ingredientID: recipeIngredient.ingredientID },
+              },
+              unit: {
+                connect: { unitID: recipeIngredient.unitID },
+              },
+            })),
+          }
           : undefined,
 
         tags: tagIDs
           ? {
-              create: tagIDs.map((tagID) => ({
-                tag: {
-                  connect: { tagID },
-                },
-              })),
-            }
+            create: tagIDs.map((tagID) => ({
+              tag: {
+                connect: { tagID },
+              },
+            })),
+          }
           : undefined,
       },
       include: this.recipeInclude,
@@ -176,7 +176,7 @@ export class RecipesService {
     recipeID: number,
     updateRecipeDto: UpdateRecipeDto,
   ) {
-  await this.assertRecipeOwner(userID, recipeID);
+    await this.assertRecipeOwner(userID, recipeID);
 
     const { steps, ingredients, tagIDs, ...recipeData } = updateRecipeDto;
 
@@ -187,38 +187,38 @@ export class RecipesService {
 
         steps: steps
           ? {
-              deleteMany: {},
-              create: steps.map((step) => ({
-                text: step.text,
-                order: step.order,
-              })),
-            }
+            deleteMany: {},
+            create: steps.map((step) => ({
+              text: step.text,
+              order: step.order,
+            })),
+          }
           : undefined,
 
         ingredients: ingredients
           ? {
-              deleteMany: {},
-              create: ingredients.map((recipeIngredient) => ({
-                quantity: recipeIngredient.quantity,
-                ingredient: {
-                  connect: { ingredientID: recipeIngredient.ingredientID },
-                },
-                unit: {
-                  connect: { unitID: recipeIngredient.unitID },
-                },
-              })),
-            }
+            deleteMany: {},
+            create: ingredients.map((recipeIngredient) => ({
+              quantity: recipeIngredient.quantity,
+              ingredient: {
+                connect: { ingredientID: recipeIngredient.ingredientID },
+              },
+              unit: {
+                connect: { unitID: recipeIngredient.unitID },
+              },
+            })),
+          }
           : undefined,
 
         tags: tagIDs
           ? {
-              deleteMany: {},
-              create: tagIDs.map((tagID) => ({
-                tag: {
-                  connect: { tagID },
-                },
-              })),
-            }
+            deleteMany: {},
+            create: tagIDs.map((tagID) => ({
+              tag: {
+                connect: { tagID },
+              },
+            })),
+          }
           : undefined,
       },
       include: this.recipeInclude,
@@ -352,7 +352,7 @@ export class RecipesService {
 
   async removeTag(userID: string, recipeID: number, tagID: number) {
     await this.assertRecipeOwner(userID, recipeID);
-    
+
     const existingTag = await this.prisma.recipeTag.findUnique({
       where: {
         recipeID_tagID: {
@@ -406,7 +406,6 @@ export class RecipesService {
     return this.prisma.review.create({
       data: {
         rating: createReviewDto.rating,
-        comment: createReviewDto.comment,
         recipeID,
         userID,
       },

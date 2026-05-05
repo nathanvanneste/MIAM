@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Text, StyleSheet, ScrollView, TouchableOpacity, View, RefreshControl } from "react-native";
 import SearchBar from "../components/ui/SearchBar";
 import RecipeCard from "../components/ui/Recipe/RecipeCard";
@@ -9,7 +9,7 @@ import type { Recipe } from "../types/recipe";
 import Grid from "../components/ui/Recipe/RecipeGrid";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ProfileDescription from "../components/ui/Profile/ProfileDescription";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { getSignedAvatarUrl } from "../services/storage.service";
 import { getMe, getMySavedRecipes, type User, type SavedRecipeItem } from "../services/users.service";
 import { getMyRecipes } from "../services/recipes.service";
@@ -50,6 +50,12 @@ export default function ProfileScreen() {
             setRefreshing(false);
         }
     }, []);
+
+    const initialLoad = useRef(true);
+    useFocusEffect(useCallback(() => {
+        if (initialLoad.current) { initialLoad.current = false; return; }
+        loadProfile();
+    }, [loadProfile]));
 
     useEffect(() => { loadProfile() }, [loadProfile]);
     const onRefresh = useCallback(() => { setRefreshing(true); loadProfile(); }, [loadProfile]);

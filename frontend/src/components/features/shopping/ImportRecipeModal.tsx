@@ -14,11 +14,12 @@ type Props = {
     visible: boolean
     listID: number
     currentItems: ShoppingItem[]
+    groupRecipes?: RecipeDetail[]
     onClose: () => void
     onImportDone: (updatedList: ShoppingList) => void
 }
 
-export default function ImportRecipeModal({ visible, listID, currentItems, onClose, onImportDone }: Props) {
+export default function ImportRecipeModal({ visible, listID, currentItems, groupRecipes, onClose, onImportDone }: Props) {
     const [recipes, setRecipes] = useState<RecipeDetail[]>([])
     const [search, setSearch] = useState('')
     const [loading, setLoading] = useState(false)
@@ -34,17 +35,19 @@ export default function ImportRecipeModal({ visible, listID, currentItems, onClo
         setSelected(new Set())
         setPhotoUrls({})
 
-        Promise.allSettled([getMyRecipes(), getMySavedRecipes()])
-            .then(async ([myResult, savedResult]) => {
+        const buildData = groupRecipes
+            ? Promise.resolve(groupRecipes as RecipeDetail[])
+            : Promise.allSettled([getMyRecipes(), getMySavedRecipes()]).then(([myResult, savedResult]) => {
                 const mine: RecipeDetail[] = myResult.status === 'fulfilled' ? myResult.value : []
                 const savedRaw = savedResult.status === 'fulfilled' ? savedResult.value : []
-
                 const seen = new Set(mine.map(r => r.recipeID))
                 const savedOnly = savedRaw
                     .filter(s => !seen.has(s.recipeID))
                     .map(s => s.recipe as RecipeDetail)
+                return [...mine, ...savedOnly]
+            })
 
-                const data = [...mine, ...savedOnly]
+        buildData.then(async data => {
                 setRecipes(data)
 
                 const defaultPortions: Record<number, number> = {}
@@ -92,7 +95,7 @@ export default function ImportRecipeModal({ visible, listID, currentItems, onClo
                 selectedRecipes.flatMap(recipe => {
                     const currentPortions = portions[recipe.recipeID] ?? recipe.portion
                     const multiplier = currentPortions / recipe.portion
-                    return recipe.ingredients.map(ing => {
+                    return (recipe.ingredients ?? []).map(ing => {
                         const scaledQty = Math.round(ing.quantity * multiplier * 10) / 10
                         const existing = currentItems.find(i =>
                             (ing.ingredientID && i.ingredientID === ing.ingredientID) ||
@@ -146,7 +149,7 @@ export default function ImportRecipeModal({ visible, listID, currentItems, onClo
                 <View style={styles.cardInfo}>
                     <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
                     <Text style={styles.cardMeta}>
-                        {item.ingredients.length} ingrédient{item.ingredients.length > 1 ? 's' : ''}
+                        {item.ingredients?.length ?? 0} ingrédient{(item.ingredients?.length ?? 0) > 1 ? 's' : ''}
                         {item.creator ? `  ·  @${item.creator.pseudo}` : ''}
                     </Text>
                 </View>
