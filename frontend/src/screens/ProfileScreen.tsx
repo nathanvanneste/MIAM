@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Text, StyleSheet, ScrollView, TouchableOpacity, View, RefreshControl } from "react-native";
+import { Text, StyleSheet, ScrollView, TouchableOpacity, View, RefreshControl, Alert } from "react-native";
 import SearchBar from "../components/ui/SearchBar";
 import RecipeCard from "../components/ui/Recipe/RecipeCard";
 import { Colors } from "../constants/colors";
 import { FontSize, FontWeight } from "../constants/typography";
-import { Settings } from "lucide-react-native";
+import { Spacing, BorderRadius } from "../constants/spacing";
+import { Settings, Trash2 } from "lucide-react-native";
 import type { Recipe } from "../types/recipe";
 import Grid from "../components/ui/Recipe/RecipeGrid";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -12,7 +13,7 @@ import ProfileDescription from "../components/ui/Profile/ProfileDescription";
 import { router, useFocusEffect } from "expo-router";
 import { getSignedAvatarUrl } from "../services/storage.service";
 import { getMe, getMySavedRecipes, type User, type SavedRecipeItem } from "../services/users.service";
-import { getMyRecipes } from "../services/recipes.service";
+import { getMyRecipes, deleteRecipe } from "../services/recipes.service";
 import { getMyRelations } from "../services/friends.service";
 import { sortByMatch } from "../utils/search";
 
@@ -25,6 +26,8 @@ export default function ProfileScreen() {
     const [friendsCount, setFriendsCount] = useState(0);
     const [pendingCount, setPendingCount] = useState(0);
     const [refreshing, setRefreshing] = useState(false);
+    const [selectedIDs, setSelectedIDs] = useState<Set<number>>(new Set());
+    const isSelecting = selectedIDs.size > 0;
 
     const loadProfile = useCallback(async () => {
         try {
@@ -63,17 +66,51 @@ export default function ProfileScreen() {
     const filteredRecipes = sortByMatch(recipes, search, r => r.name);
     const filteredSaved = sortByMatch(savedRecipes, search, s => s.recipe.name);
 
+    const handleLongPress = (recipeID: number) => {
+        setSelectedIDs(prev => new Set([...prev, recipeID]));
+    };
+
+    const handleCardPress = (recipeID: number) => {
+        if (isSelecting) {
+            setSelectedIDs(prev => {
+                const next = new Set(prev);
+                next.has(recipeID) ? next.delete(recipeID) : next.add(recipeID);
+                return next;
+            });
+        } else {
+            router.push({ pathname: '/recipe/[recipeID]', params: { recipeID: recipeID.toString() } });
+        }
+    };
+
+    const handleDeleteSelected = async () => {
+        const toDelete = [...selectedIDs];
+        const previous = recipes;
+        setRecipes(prev => prev.filter(r => !selectedIDs.has(r.recipeID)));
+        setSelectedIDs(new Set());
+        try {
+            await Promise.all(toDelete.map(id => deleteRecipe(id)));
+        } catch {
+            setRecipes(previous);
+            setSelectedIDs(new Set(toDelete));
+            Alert.alert('Erreur', 'Impossible de supprimer les recettes sélectionnées.');
+        }
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
             >
                 <TouchableOpacity
                     style={styles.settings}
-                    onPress={() => router.push("/settings")}
+                    onPress={isSelecting ? () => setSelectedIDs(new Set()) : () => router.push("/settings")}
                 >
-                    <Settings size={26} color={Colors.textPrimary} />
+                    {isSelecting
+                        ? <Text style={styles.cancelText}>Annuler</Text>
+                        : <Settings size={26} color={Colors.textPrimary} />
+                    }
                 </TouchableOpacity>
 
                 <ProfileDescription
@@ -105,6 +142,10 @@ export default function ProfileScreen() {
                                 key={recipe.recipeID}
                                 recipe={recipe}
                                 cardWidth={cardWidth}
+                                isSelecting={isSelecting}
+                                selected={selectedIDs.has(recipe.recipeID)}
+                                onPress={() => handleCardPress(recipe.recipeID)}
+                                onLongPress={() => handleLongPress(recipe.recipeID)}
                             />
                         ))
                     }
@@ -130,6 +171,20 @@ export default function ProfileScreen() {
                     </>
                 )}
             </ScrollView>
+
+            {isSelecting && (
+                <View style={styles.deleteBar}>
+                    <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteSelected}>
+                        <Trash2 size={18} color={Colors.surface} />
+                        <Text style={styles.deleteBtnText}>
+                            Supprimer ({selectedIDs.size})
+                        </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.cancelBtn} onPress={() => setSelectedIDs(new Set())}>
+                        <Text style={styles.cancelBtnText}>Annuler</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
         </SafeAreaView>
     );
 }
@@ -144,6 +199,45 @@ const styles = StyleSheet.create({
         top: 8,
         right: 24,
         zIndex: 10,
+    },
+    cancelText: {
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.medium,
+        color: Colors.primary,
+    },
+    deleteBar: {
+        flexDirection: 'row',
+        gap: Spacing.sm,
+        paddingHorizontal: Spacing.xl,
+        paddingVertical: Spacing.md,
+        borderTopWidth: 1,
+        borderTopColor: Colors.border,
+        backgroundColor: Colors.background,
+    },
+    deleteBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: Spacing.sm,
+        backgroundColor: Colors.error,
+        borderRadius: BorderRadius.md,
+        paddingVertical: Spacing.md,
+    },
+    deleteBtnText: {
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.bold,
+        color: Colors.surface,
+    },
+    cancelBtn: {
+        paddingHorizontal: Spacing.lg,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    cancelBtnText: {
+        fontSize: FontSize.md,
+        fontWeight: FontWeight.medium,
+        color: Colors.textSecondary,
     },
     sectionTitle: {
         fontSize: FontSize.xxxl,

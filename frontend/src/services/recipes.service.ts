@@ -83,6 +83,10 @@ export const updateRecipePhoto = async (
   });
 };
 
+export const deleteRecipe = async (recipeID: number): Promise<void> => {
+  await apiFetch(`/recipes/${recipeID}`, { method: 'DELETE' })
+}
+
 export const updateRecipe = async (
   recipeID: number,
   data: Partial<{

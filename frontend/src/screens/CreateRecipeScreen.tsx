@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert, Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { KeyboardAvoidingView } from 'react-native'
@@ -67,17 +67,22 @@ export default function CreateRecipeScreen() {
         setForm(f => ({ ...f, photoUri: stableUri }))
     }
 
+    const saving = useRef(false)
+
     const handleSave = async () => {
+        if (saving.current) return
         if (!form.name.trim()) {
             Alert.alert('Erreur', 'Le nom de la recette est obligatoire')
             return
         }
+        saving.current = true
         try {
             await createRecipe(form)
             Alert.alert('Succès', 'Recette créée !', [
                 { text: 'OK', onPress: () => router.replace('/(tabs)/profile') },
             ])
         } catch (e: any) {
+            saving.current = false
             Alert.alert('Erreur', e.message)
         }
     }
@@ -205,7 +210,7 @@ export default function CreateRecipeScreen() {
                         )}
 
                         {/* Bouton */}
-                        <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.85}>
+                        <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.85} disabled={saving.current}>
                             <Text style={styles.saveButtonText}>Enregistrer la recette</Text>
                         </TouchableOpacity>
 
