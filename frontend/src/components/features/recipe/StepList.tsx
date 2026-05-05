@@ -20,6 +20,7 @@ export default function StepList({ onChange }: Props) {
     }
 
     const handleAdd = () => {
+        if (steps.some(s => !s.text.trim())) return
         const newSteps = [...steps, { text: '', order: steps.length + 1, key: String(Date.now()) }]
         setSteps(newSteps)
         notify(newSteps)
@@ -60,6 +61,7 @@ export default function StepList({ onChange }: Props) {
                     multiline
                     value={item.text}
                     onChangeText={(text) => handleChange(item.key, text)}
+                    onBlur={() => { if (!item.text.trim()) handleRemove(item.key) }}
                 />
 
                 <TouchableOpacity onPress={() => handleRemove(item.key)}>

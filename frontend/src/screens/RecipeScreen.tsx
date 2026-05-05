@@ -52,6 +52,7 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
   const [headerSheetVisible, setHeaderSheetVisible] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -86,7 +87,7 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
     load();
   }, [recipeID, currentUser]);
 
-  const markUnsaved = () => { hasUnsavedChanges.current = true; };
+  const markUnsaved = () => { hasUnsavedChanges.current = true; setIsDirty(true); };
 
   const handleToggleEdit = () => {
     if (isEditing) {
@@ -103,6 +104,7 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
                 if (recipeSnapshot.current) setRecipe(recipeSnapshot.current);
                 recipeSnapshot.current = null;
                 hasUnsavedChanges.current = false;
+                setIsDirty(false);
                 setIsEditing(false);
               },
             },
@@ -115,6 +117,7 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
     } else {
       recipeSnapshot.current = recipe;
       hasUnsavedChanges.current = false;
+      setIsDirty(false);
       setIsEditing(true);
     }
   };
@@ -152,6 +155,7 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
       });
       recipeSnapshot.current = null;
       hasUnsavedChanges.current = false;
+      setIsDirty(false);
       setIsEditing(false);
     } catch {
       Alert.alert("Erreur", "Impossible d'enregistrer les modifications.");
@@ -364,6 +368,7 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
             onPress={handleSaveAll}
             backgroundColor={Colors.primaryButton}
             textColor={Colors.surface}
+            disabled={!isDirty || isSaving}
           />
         </View>
       )}

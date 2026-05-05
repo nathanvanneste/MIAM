@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Image, ActivityIndicator } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { ArrowLeft, Camera } from 'lucide-react-native'
@@ -20,6 +20,12 @@ export default function SettingsScreen() {
     const [pseudo, setPseudo] = useState('')
     const [saving, setSaving] = useState(false)
     const [loading, setLoading] = useState(true)
+    const initial = useRef({ firstName: '', lastName: '', pseudo: '' })
+
+    const isDirty =
+        firstName.trim() !== initial.current.firstName ||
+        lastName.trim() !== initial.current.lastName ||
+        pseudo.trim() !== initial.current.pseudo
 
     useEffect(() => {
         getMe().then(async (me) => {
@@ -27,6 +33,7 @@ export default function SettingsScreen() {
             setFirstName(me.firstName)
             setLastName(me.lastName)
             setPseudo(me.pseudo)
+            initial.current = { firstName: me.firstName, lastName: me.lastName, pseudo: me.pseudo }
             if (me.avatar) {
                 const url = await getSignedAvatarUrl(me.avatar).catch(() => null)
                 setAvatarUrl(url)
@@ -80,7 +87,9 @@ export default function SettingsScreen() {
         }
         setSaving(true)
         try {
-            await updateMe({ firstName: firstName.trim(), lastName: lastName.trim(), pseudo: pseudo.trim() })
+            const trimmed = { firstName: firstName.trim(), lastName: lastName.trim(), pseudo: pseudo.trim() }
+            await updateMe(trimmed)
+            initial.current = trimmed
             Alert.alert('Succès', 'Profil mis à jour.')
         } catch {
             Alert.alert('Erreur', 'Impossible de mettre à jour le profil.')
@@ -210,9 +219,9 @@ export default function SettingsScreen() {
                 </View>
 
                 <TouchableOpacity
-                    style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+                    style={[styles.saveBtn, (!isDirty || saving) && styles.saveBtnDisabled]}
                     onPress={handleSave}
-                    disabled={saving}
+                    disabled={!isDirty || saving}
                 >
                     {saving
                         ? <ActivityIndicator color={Colors.primary} />

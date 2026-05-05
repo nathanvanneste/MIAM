@@ -8,6 +8,7 @@ type Props = {
   onPress: () => void;
   backgroundColor?: string;
   textColor?: string;
+  disabled?: boolean;
 };
 
 export default function PrimaryButton({
@@ -15,11 +16,13 @@ export default function PrimaryButton({
   onPress,
   backgroundColor = Colors.primaryButton,
   textColor = Colors.surface,
+  disabled = false,
 }: Props) {
   return (
     <Pressable
-      style={[styles.button, { backgroundColor }]}
+      style={[styles.button, { backgroundColor }, disabled && styles.disabled]}
       onPress={onPress}
+      disabled={disabled}
     >
       <Text style={[styles.text, { color: textColor }]}>
         {title}
@@ -35,6 +38,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  disabled: { opacity: 0.5 },
 
   text: {
     fontSize: FontSize.lg,

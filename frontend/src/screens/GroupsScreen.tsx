@@ -70,7 +70,10 @@ export default function GroupsScreen() {
     }
 
     const handleCreated = (group: Group) => {
+        const now = Date.now()
         setGroups(prev => [group, ...prev])
+        setHistory(prev => ({ ...prev, [group.groupID]: now }))
+        recordOpen(group.groupID)
         setShowCreate(false)
     }
 

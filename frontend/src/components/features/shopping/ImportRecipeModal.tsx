@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { X, Search, Minus, Plus, Check } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
 import { ShoppingList, ShoppingItem } from '@/src/types/shoppingList'
-import { RecipeDetail, getMyRecipes } from '@/src/services/recipes.service'
+import { RecipeDetail, getMyRecipes, getRecipeById } from '@/src/services/recipes.service'
 import { getMySavedRecipes } from '@/src/services/users.service'
 import { addItem, updateItem, getList } from '@/src/services/shoppingList.service'
 import { getSignedRecipePhotoUrl } from '@/src/services/storage.service'
@@ -36,7 +36,7 @@ export default function ImportRecipeModal({ visible, listID, currentItems, group
         setPhotoUrls({})
 
         const buildData = groupRecipes
-            ? Promise.resolve(groupRecipes as RecipeDetail[])
+            ? Promise.all(groupRecipes.map(r => getRecipeById(r.recipeID)))
             : Promise.allSettled([getMyRecipes(), getMySavedRecipes()]).then(([myResult, savedResult]) => {
                 const mine: RecipeDetail[] = myResult.status === 'fulfilled' ? myResult.value : []
                 const savedRaw = savedResult.status === 'fulfilled' ? savedResult.value : []

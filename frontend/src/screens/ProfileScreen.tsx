@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Text, StyleSheet, ScrollView, TouchableOpacity, View, RefreshControl, Alert } from "react-native";
+import { Text, StyleSheet, ScrollView, TouchableOpacity, View, RefreshControl, Alert, StatusBar } from "react-native";
 import SearchBar from "../components/ui/SearchBar";
 import RecipeCard from "../components/ui/Recipe/RecipeCard";
 import { Colors } from "../constants/colors";
@@ -97,22 +97,25 @@ export default function ProfileScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
-            >
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+            <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+            <View style={styles.headerBar}>
                 <TouchableOpacity
-                    style={styles.settings}
                     onPress={isSelecting ? () => setSelectedIDs(new Set()) : () => router.push("/settings")}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                     {isSelecting
                         ? <Text style={styles.cancelText}>Annuler</Text>
                         : <Settings size={26} color={Colors.textPrimary} />
                     }
                 </TouchableOpacity>
+            </View>
 
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
+            >
                 <ProfileDescription
                     avatarUrl={avatarUrl ?? "https://api.dicebear.com/7.x/adventurer/png?seed=default"}
                     username={user?.pseudo ?? "Chargement..."}
@@ -194,11 +197,12 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: Colors.background,
     },
-    settings: {
-        position: "absolute",
-        top: 8,
-        right: 24,
-        zIndex: 10,
+    headerBar: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingVertical: 8,
     },
     cancelText: {
         fontSize: FontSize.md,

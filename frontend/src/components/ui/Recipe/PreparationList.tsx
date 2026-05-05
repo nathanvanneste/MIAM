@@ -20,6 +20,10 @@ export default function PreparationList({ steps, onSave }: PreparationListProps)
     setLocalSteps(steps);
   }, [steps]);
 
+  useEffect(() => {
+    if (!isEditable) setPendingStep(null);
+  }, [isEditable]);
+
   const handleEdit = (index: number, text: string) => {
     const updated = localSteps.map((s, i) => (i === index ? text : s));
     setLocalSteps(updated);
@@ -60,6 +64,7 @@ export default function PreparationList({ steps, onSave }: PreparationListProps)
                   style={styles.stepInput}
                   value={step}
                   onChangeText={(text) => handleEdit(index, text)}
+                  onBlur={() => { if (!step.trim()) handleDelete(index) }}
                   multiline
                   placeholder="Décrivez cette étape..."
                   placeholderTextColor={Colors.textSecondary}
@@ -85,6 +90,7 @@ export default function PreparationList({ steps, onSave }: PreparationListProps)
                 style={styles.stepInput}
                 value={pendingStep}
                 onChangeText={setPendingStep}
+                onBlur={handleConfirmAdd}
                 multiline
                 placeholder="Décrivez cette étape..."
                 placeholderTextColor={Colors.textSecondary}
