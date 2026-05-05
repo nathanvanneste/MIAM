@@ -1,17 +1,16 @@
-import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert, Image } from 'react-native'
+import { useState, useEffect } from 'react'
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert, Image, KeyboardAvoidingView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { KeyboardAvoidingView } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as FileSystem from 'expo-file-system/legacy'
-import { ImagePlus, Clock, Users } from 'lucide-react-native'
+import { ImagePlus, Clock, Users, Mic } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
 import { CreateRecipeDTO } from '@/src/types/recipe'
 import PortionCounter from '@/src/components/features/recipe/PortionCounter'
 import IngredientSearch from '@/src/components/features/recipe/IngredientSearch'
 import StepList from '@/src/components/features/recipe/StepList'
 import { createRecipe } from '@/src/services/recipes.service'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 
 function SectionTitle({ number, title }: { number: string; title: string }) {
     return (
@@ -26,6 +25,8 @@ function SectionTitle({ number, title }: { number: string; title: string }) {
 }
 
 export default function CreateRecipeScreen() {
+    const { prefill } = useLocalSearchParams<{ prefill?: string }>();
+    
     const [form, setForm] = useState<CreateRecipeDTO>({
         name: '',
         portions: 2,
@@ -38,6 +39,27 @@ export default function CreateRecipeScreen() {
         photoUri: undefined,
     })
     const [coverUri, setCoverUri] = useState<string | null>(null)
+
+    // Préremplir les données si elles viennent de la dictée vocale
+    useEffect(() => {
+        if (prefill) {
+            try {
+                const prefillData = JSON.parse(decodeURIComponent(prefill));
+                console.log('📝 Préremplissage des données:', prefillData);
+                
+                setForm(prevForm => ({
+                    ...prevForm,
+                    ...prefillData,
+                    // S'assurer que les tableaux sont bien formatés
+                    recipeIngredients: prefillData.recipeIngredients || [],
+                    steps: prefillData.steps || [],
+                    categories: prefillData.categories || [],
+                }));
+            } catch (error) {
+                console.error('Erreur lors du parsing des données préremplies:', error);
+            }
+        }
+    }, [prefill]);
 
     const pickCover = () => {
         Alert.alert('Photo de couverture', undefined, [
@@ -140,6 +162,7 @@ export default function CreateRecipeScreen() {
                                         style={styles.timeInput}
                                         placeholder="0"
                                         placeholderTextColor={Colors.textSecondary}
+                                        value={form.prepTime > 0 ? String(form.prepTime) : ''}
                                         keyboardType="numeric"
                                         onChangeText={(text) => setForm({ ...form, prepTime: parseInt(text) || 0 })}
                                         multiline={false}
@@ -157,6 +180,7 @@ export default function CreateRecipeScreen() {
                                         style={styles.timeInput}
                                         placeholder="0"
                                         placeholderTextColor={Colors.textSecondary}
+                                        value={form.cookTime > 0 ? String(form.cookTime) : ''}
                                         keyboardType="numeric"
                                         onChangeText={(text) => setForm({ ...form, cookTime: parseInt(text) || 0 })}
                                         multiline={false}
@@ -168,11 +192,17 @@ export default function CreateRecipeScreen() {
 
                         {/* 02 — Ingrédients */}
                         <SectionTitle number="02" title="Ingrédients" />
-                        <IngredientSearch onChange={(ingredients) => setForm({ ...form, recipeIngredients: ingredients })} />
+                        <IngredientSearch
+                            initialIngredients={form.recipeIngredients}
+                            onChange={(ingredients) => setForm({ ...form, recipeIngredients: ingredients })}
+                        />
 
                         {/* 03 — Étapes */}
                         <SectionTitle number="03" title="Étapes" />
-                        <StepList onChange={(steps) => setForm({ ...form, steps })} />
+                        <StepList
+                            initialSteps={form.steps}
+                            onChange={(steps) => setForm({ ...form, steps })}
+                        />
 
                         {/* 04 — Catégories */}
                         <SectionTitle number="04" title="Catégories" />
@@ -188,6 +218,7 @@ export default function CreateRecipeScreen() {
                             placeholderTextColor={Colors.textSecondary}
                             multiline
                             numberOfLines={4}
+                            value={form.description ?? ''}
                             onChangeText={(text) => setForm({ ...form, description: text })}
                             textAlignVertical="top"
                         />
@@ -200,6 +231,15 @@ export default function CreateRecipeScreen() {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
+            
+            {/* Floating Voice Button */}
+            <TouchableOpacity 
+                style={styles.fab}
+                onPress={() => router.push('/voice-chat')}
+                activeOpacity={0.8}
+            >
+                <Mic size={28} color={Colors.surface} />
+            </TouchableOpacity>
         </SafeAreaView>
     )
 }
@@ -354,5 +394,23 @@ const styles = StyleSheet.create({
         fontSize: FontSize.md,
         fontWeight: FontWeight.bold,
         letterSpacing: 0.5,
+    },
+
+    // Floating Voice Button
+    fab: {
+        position: 'absolute',
+        bottom: Spacing.lg,
+        right: Spacing.lg,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: Colors.primaryButton,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: Colors.primaryButton,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 6,
     },
 })

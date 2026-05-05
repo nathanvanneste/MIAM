@@ -1,5 +1,5 @@
 // src/components/ui/PrimaryButton.tsx
-import { Pressable, Text, StyleSheet } from "react-native";
+import { Pressable, Text, StyleSheet, ViewStyle, StyleProp } from "react-native";
 import { Colors } from "../../constants/colors";
 import { FontSize, FontWeight } from "../../constants/typography";
 
@@ -8,6 +8,7 @@ type Props = {
   onPress: () => void;
   backgroundColor?: string;
   textColor?: string;
+  style?: StyleProp<ViewStyle>;
 };
 
 export default function PrimaryButton({
@@ -15,15 +16,14 @@ export default function PrimaryButton({
   onPress,
   backgroundColor = Colors.primaryButton,
   textColor = Colors.surface,
+  style,
 }: Props) {
   return (
     <Pressable
-      style={[styles.button, { backgroundColor }]}
+      style={[styles.button, { backgroundColor }, style]}
       onPress={onPress}
     >
-      <Text style={[styles.text, { color: textColor }]}>
-        {title}
-      </Text>
+      <Text style={[styles.text, { color: textColor }]}> {title}</Text>
     </Pressable>
   );
 }
