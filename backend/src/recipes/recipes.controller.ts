@@ -22,6 +22,9 @@ import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
 import { UpdateRecipePhotoDto } from './dto/update-recipe-photo.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CreateRecipeCommentDto } from './dto/create-recipe-comment.dto';
+import { UpdateRecipeCommentDto } from './dto/update-recipe-comment.dto';
+import { UpsertCommentReactionDto } from './dto/upsert-comment-reaction.dto';
 
 @Controller('recipes')
 export class RecipesController {
@@ -204,6 +207,77 @@ export class RecipesController {
     @Param('reviewID', ParseIntPipe) reviewID: number
   ) {
     return this.recipesService.removeReview(req.user.userID, reviewID);
+  }
+  
+  @Get(':recipeID/comments')
+  findComments(@Param('recipeID', ParseIntPipe) recipeID: number) {
+    return this.recipesService.findComments(recipeID);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':recipeID/comments')
+  addComment(
+    @Req() req: AuthenticatedRequest,
+    @Param('recipeID', ParseIntPipe) recipeID: number,
+    @Body() dto: CreateRecipeCommentDto,
+  ) {
+    return this.recipesService.addComment(
+      req.user.userID,
+      recipeID,
+      dto,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('comments/:commentID')
+  updateComment(
+    @Req() req: AuthenticatedRequest,
+    @Param('commentID', ParseIntPipe) commentID: number,
+    @Body() dto: UpdateRecipeCommentDto,
+  ) {
+    return this.recipesService.updateComment(
+      req.user.userID,
+      commentID,
+      dto,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('comments/:commentID')
+  removeComment(
+    @Req() req: AuthenticatedRequest,
+    @Param('commentID', ParseIntPipe) commentID: number,
+  ) {
+    return this.recipesService.removeComment(
+      req.user.userID,
+      commentID,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('comments/:commentID/reaction')
+  upsertCommentReaction(
+    @Req() req: AuthenticatedRequest,
+    @Param('commentID', ParseIntPipe) commentID: number,
+    @Body() dto: UpsertCommentReactionDto,
+  ) {
+    return this.recipesService.upsertCommentReaction(
+      req.user.userID,
+      commentID,
+      dto,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('comments/:commentID/reaction')
+  removeCommentReaction(
+    @Req() req: AuthenticatedRequest,
+    @Param('commentID', ParseIntPipe) commentID: number,
+  ) {
+    return this.recipesService.removeCommentReaction(
+      req.user.userID,
+      commentID,
+    );
   }
 
 }

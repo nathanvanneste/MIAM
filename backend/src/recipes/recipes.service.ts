@@ -14,6 +14,9 @@ import { CreateStepDto } from './dto/create-step.dto';
 import { UpdateStepDto } from './dto/update-step.dto';
 import { AddRecipeIngredientDto } from './dto/add-recipe-ingredient.dto';
 import { AddRecipeTagDto } from './dto/add-recipe-tag.dto';
+import { CreateRecipeCommentDto } from './dto/create-recipe-comment.dto';
+import { UpdateRecipeCommentDto } from './dto/update-recipe-comment.dto';
+import { UpsertCommentReactionDto } from './dto/upsert-comment-reaction.dto';
 
 
 @Injectable()
@@ -49,6 +52,12 @@ export class RecipesService {
       },
     },
     groups: true,
+  };
+
+  private readonly publicUserSelect = {
+    userID: true,
+    pseudo: true,
+    avatar: true,
   };
 
   private async assertRecipeOwner(userID: string, recipeID: number) {
@@ -406,7 +415,6 @@ export class RecipesService {
     return this.prisma.review.create({
       data: {
         rating: createReviewDto.rating,
-        comment: createReviewDto.comment,
         recipeID,
         userID,
       },
@@ -526,6 +534,241 @@ export class RecipesService {
     const random = all.slice(RECENT).sort(() => Math.random() - 0.5);
 
     return { recent, random };
+  }
+
+  async findComments(recipeID: number) {
+    const recipe = await this.prisma.recipe.findUnique({
+      where: { recipeID },
+      select: { recipeID: true },
+    });
+
+    if (!recipe) {
+      throw new NotFoundException(`Recipe with ID ${recipeID} not found`);
+    }
+
+    return this.prisma.recipeComment.findMany({
+      where: {
+        recipeID,
+        parentCommentID: null,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: {
+        user: {
+          select: this.publicUserSelect,
+        },
+        replies: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+          include: {
+            user: {
+              select: this.publicUserSelect,
+            },
+            _count: {
+              select: {
+                reactions: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            replies: true,
+            reactions: true,
+          },
+        },
+      },
+    });
+  }
+
+  async addComment(
+    userID: string,
+    recipeID: number,
+    dto: CreateRecipeCommentDto,
+  ) {
+    const recipe = await this.prisma.recipe.findUnique({
+      where: { recipeID },
+      select: { recipeID: true },
+    });
+
+    if (!recipe) {
+      throw new NotFoundException(`Recipe with ID ${recipeID} not found`);
+    }
+
+    if (dto.parentCommentID) {
+      const parentComment = await this.prisma.recipeComment.findUnique({
+        where: { commentID: dto.parentCommentID },
+        select: {
+          commentID: true,
+          recipeID: true,
+          parentCommentID: true,
+        },
+      });
+
+      if (!parentComment) {
+        throw new NotFoundException(
+          `Comment with ID ${dto.parentCommentID} not found`,
+        );
+      }
+
+      if (parentComment.recipeID !== recipeID) {
+        throw new BadRequestException(
+          'Vous ne pouvez pas répondre à un commentaire d’une autre recette.',
+        );
+      }
+
+      if (parentComment.parentCommentID !== null) {
+        throw new BadRequestException(
+          'Vous ne pouvez répondre qu’à un commentaire principal.',
+        );
+      }
+    }
+
+    return this.prisma.recipeComment.create({
+      data: {
+        content: dto.content,
+        recipeID,
+        userID,
+        parentCommentID: dto.parentCommentID,
+      },
+      include: {
+        user: {
+          select: this.publicUserSelect,
+        },
+        _count: {
+          select: {
+            replies: true,
+            reactions: true,
+          },
+        },
+      },
+    });
+  }
+
+  async updateComment(
+    userID: string,
+    commentID: number,
+    dto: UpdateRecipeCommentDto,
+  ) {
+    const comment = await this.prisma.recipeComment.findUnique({
+      where: { commentID },
+      select: {
+        commentID: true,
+        userID: true,
+      },
+    });
+
+    if (!comment) {
+      throw new NotFoundException(`Comment with ID ${commentID} not found`);
+    }
+
+    if (comment.userID !== userID) {
+      throw new ForbiddenException(
+        'Vous ne pouvez modifier que vos propres commentaires.',
+      );
+    }
+
+    return this.prisma.recipeComment.update({
+      where: { commentID },
+      data: {
+        content: dto.content,
+      },
+      include: {
+        user: {
+          select: this.publicUserSelect,
+        },
+      },
+    });
+  }
+
+  async removeComment(userID: string, commentID: number) {
+    const comment = await this.prisma.recipeComment.findUnique({
+      where: { commentID },
+      select: {
+        commentID: true,
+        userID: true,
+        recipe: {
+          select: {
+            creatorID: true,
+          },
+        },
+      },
+    });
+
+    if (!comment) {
+      throw new NotFoundException(`Comment with ID ${commentID} not found`);
+    }
+
+    const isCommentAuthor = comment.userID === userID;
+    const isRecipeCreator = comment.recipe.creatorID === userID;
+
+    if (!isCommentAuthor && !isRecipeCreator) {
+      throw new ForbiddenException(
+        'Vous ne pouvez supprimer que vos commentaires ou les commentaires sur vos recettes.',
+      );
+    }
+
+    return this.prisma.recipeComment.delete({
+      where: { commentID },
+    });
+  }
+
+  async upsertCommentReaction(
+    userID: string,
+    commentID: number,
+    dto: UpsertCommentReactionDto,
+  ) {
+    const comment = await this.prisma.recipeComment.findUnique({
+      where: { commentID },
+      select: { commentID: true },
+    });
+
+    if (!comment) {
+      throw new NotFoundException(`Comment with ID ${commentID} not found`);
+    }
+
+    return this.prisma.commentReaction.upsert({
+      where: {
+        commentID_userID: {
+          commentID,
+          userID,
+        },
+      },
+      update: {
+        type: dto.type,
+      },
+      create: {
+        commentID,
+        userID,
+        type: dto.type,
+      },
+    });
+  }
+
+  async removeCommentReaction(userID: string, commentID: number) {
+    const reaction = await this.prisma.commentReaction.findUnique({
+      where: {
+        commentID_userID: {
+          commentID,
+          userID,
+        },
+      },
+    });
+
+    if (!reaction) {
+      throw new NotFoundException('Reaction not found');
+    }
+
+    return this.prisma.commentReaction.delete({
+      where: {
+        commentID_userID: {
+          commentID,
+          userID,
+        },
+      },
+    });
   }
 }
 

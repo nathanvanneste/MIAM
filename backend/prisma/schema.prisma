@@ -13,6 +13,11 @@ enum FriendshipStatus {
   BLOCKED
 }
 
+enum CommentReactionType {
+  LIKE
+  DISLIKE
+}
+
 model User {
   userID    String   @id @db.Uuid
   firstName String
@@ -26,6 +31,9 @@ model User {
   savedRecipes SavedRecipe[]
 
   reviews      Review[]
+  comments     RecipeComment[]
+  commentReactions CommentReaction[]
+
   shoppingList ShoppingList?
 
   sentFriendships     Friendship[] @relation("FriendshipRequester")
@@ -66,6 +74,7 @@ model Recipe {
 
   steps       Step[]
   reviews     Review[]
+  comments    RecipeComment[]
   ingredients RecipeIngredient[]
   tags        RecipeTag[]
   groups      GroupRecipe[]
@@ -85,15 +94,50 @@ model SavedRecipe {
 model Review {
   reviewID  Int      @id @default(autoincrement())
   rating    Int
-  comment   String?
   userID    String   @db.Uuid
   recipeID  Int
   createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
 
   user   User   @relation(fields: [userID], references: [userID], onDelete: Cascade)
   recipe Recipe @relation(fields: [recipeID], references: [recipeID], onDelete: Cascade)
 
   @@unique([userID, recipeID])
+}
+
+model RecipeComment {
+  commentID       Int      @id @default(autoincrement())
+  content         String
+  recipeID        Int
+  userID          String   @db.Uuid
+  parentCommentID Int?
+  createdAt       DateTime @default(now()) @db.Timestamptz
+  updatedAt       DateTime @updatedAt @db.Timestamptz
+
+  recipe Recipe @relation(fields: [recipeID], references: [recipeID], onDelete: Cascade)
+  user   User   @relation(fields: [userID], references: [userID], onDelete: Cascade)
+
+  parentComment RecipeComment?  @relation("CommentReplies", fields: [parentCommentID], references: [commentID], onDelete: Cascade)
+  replies       RecipeComment[] @relation("CommentReplies")
+
+  reactions CommentReaction[]
+
+  @@index([recipeID, createdAt])
+  @@index([parentCommentID])
+  @@index([userID])
+}
+
+model CommentReaction {
+  commentID Int
+  userID    String              @db.Uuid
+  type      CommentReactionType
+  createdAt DateTime            @default(now()) @db.Timestamptz
+
+  comment RecipeComment @relation(fields: [commentID], references: [commentID], onDelete: Cascade)
+  user    User          @relation(fields: [userID], references: [userID], onDelete: Cascade)
+
+  @@id([commentID, userID])
+  @@index([userID])
 }
 
 model Step {
