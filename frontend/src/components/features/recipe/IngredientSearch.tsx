@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native'
-import { X, ChevronDown, Plus } from 'lucide-react-native'
+import { X, Plus } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
 import { Ingredient } from '@/src/types/ingredient'
 import { searchIngredients } from '@/src/services/ingredients.service'
 import { normalize } from '@/src/utils/search'
 import { UNITS } from '@/src/constants/units'
 import { CreateRecipeIngredientDTO } from '@/src/types/recipeIngredient'
+import UnitDropdown from '@/src/components/ui/UnitDropdown'
 
 type SelectedIngredient = {
     ingredient: Ingredient
@@ -29,9 +30,7 @@ export default function IngredientSearch({ onChange }: Props) {
     const [search, setSearch] = useState('')
     const [suggestions, setSuggestions] = useState<Ingredient[]>([])
     const [staged, setStaged] = useState<StagedIngredient | null>(null)
-    const [showStagedUnitPicker, setShowStagedUnitPicker] = useState(false)
     const [selected, setSelected] = useState<SelectedIngredient[]>([])
-    const [openUnitPicker, setOpenUnitPicker] = useState<number | null>(null)
 
     const notify = (items: SelectedIngredient[]) => {
         onChange(items.map(s => ({
@@ -59,7 +58,6 @@ export default function IngredientSearch({ onChange }: Props) {
         }
     }
 
-    // Tap suggestion → staging (pas encore ajouté)
     const handleSelectSuggestion = (ingredient: Ingredient) => {
         const defaultIdx = UNITS.findIndex(u => u.type === ingredient.unitDefault)
         setStaged({
@@ -69,10 +67,8 @@ export default function IngredientSearch({ onChange }: Props) {
         })
         setSearch('')
         setSuggestions([])
-        setShowStagedUnitPicker(false)
     }
 
-    // Confirme l'ajout depuis le staging
     const handleConfirmStaged = () => {
         if (!staged) return
         const unit = UNITS[staged.unitIndex]
@@ -88,14 +84,12 @@ export default function IngredientSearch({ onChange }: Props) {
         setSelected(newSelected)
         notify(newSelected)
         setStaged(null)
-        setShowStagedUnitPicker(false)
     }
 
     const handleRemove = (id: number) => {
         const newSelected = selected.filter(s => s.ingredient.ingredientID !== id)
         setSelected(newSelected)
         notify(newSelected)
-        if (openUnitPicker === id) setOpenUnitPicker(null)
     }
 
     const handleQuantityChange = (id: number, text: string) => {
@@ -106,18 +100,16 @@ export default function IngredientSearch({ onChange }: Props) {
         notify(newSelected)
     }
 
-    const handleUnitSelect = (id: number, unit: typeof UNITS[0]) => {
+    const handleUnitSelect = (id: number, unit: { unitID: number; type: string }) => {
         const newSelected = selected.map(s =>
             s.ingredient.ingredientID === id ? { ...s, unitID: unit.unitID, unitType: unit.type } : s
         )
         setSelected(newSelected)
         notify(newSelected)
-        setOpenUnitPicker(null)
     }
 
     return (
         <View>
-            {/* Barre de recherche */}
             <TextInput
                 style={styles.input}
                 placeholder="Ajouter un ingrédient..."
@@ -127,7 +119,6 @@ export default function IngredientSearch({ onChange }: Props) {
                 multiline={false}
             />
 
-            {/* Suggestions */}
             {suggestions.length > 0 && (
                 <ScrollView
                     style={styles.dropdown}
@@ -147,27 +138,8 @@ export default function IngredientSearch({ onChange }: Props) {
                 </ScrollView>
             )}
 
-            {/* Staging — configurer qty/unité avant d'ajouter */}
             {staged && (
                 <View style={styles.stagingCard}>
-                    {showStagedUnitPicker && (
-                        <View style={styles.unitChipsRow}>
-                            {UNITS.map((unit, idx) => (
-                                <TouchableOpacity
-                                    key={unit.unitID}
-                                    style={[styles.unitChip, staged.unitIndex === idx && styles.unitChipActive]}
-                                    onPress={() => {
-                                        setStaged(s => s ? { ...s, unitIndex: idx } : s)
-                                        setShowStagedUnitPicker(false)
-                                    }}
-                                >
-                                    <Text style={[styles.unitChipText, staged.unitIndex === idx && styles.unitChipTextActive]}>
-                                        {unit.type}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    )}
                     <View style={styles.stagingRow}>
                         <Text style={styles.stagingName} numberOfLines={1}>{staged.ingredient.name}</Text>
                         <TextInput
@@ -184,13 +156,17 @@ export default function IngredientSearch({ onChange }: Props) {
                             maxLength={7}
                             multiline={false}
                         />
-                        <TouchableOpacity
-                            style={[styles.unitButton, showStagedUnitPicker && styles.unitButtonActive]}
-                            onPress={() => setShowStagedUnitPicker(v => !v)}
-                        >
-                            <Text style={styles.unitText}>{UNITS[staged.unitIndex].type}</Text>
-                            <ChevronDown size={10} color={Colors.textSecondary} />
-                        </TouchableOpacity>
+                        <UnitDropdown
+                            value={UNITS[staged.unitIndex].type}
+                            selectedUnitID={UNITS[staged.unitIndex].unitID}
+                            onSelect={(unit) => {
+                                const idx = UNITS.findIndex(u => u.unitID === unit.unitID)
+                                setStaged(s => s ? { ...s, unitIndex: idx >= 0 ? idx : 0 } : s)
+                            }}
+                            buttonStyle={styles.unitButton}
+                            buttonActiveStyle={styles.unitButtonActive}
+                            textStyle={styles.unitText}
+                        />
                         <TouchableOpacity style={styles.addButton} onPress={handleConfirmStaged}>
                             <Plus size={18} color={Colors.surface} />
                         </TouchableOpacity>
@@ -198,10 +174,8 @@ export default function IngredientSearch({ onChange }: Props) {
                 </View>
             )}
 
-            {/* Ingrédients confirmés */}
             {selected.map(item => {
                 const id = item.ingredient.ingredientID
-                const isPickerOpen = openUnitPicker === id
                 return (
                     <View key={id} style={styles.selectedItem}>
                         <View style={styles.itemRow}>
@@ -217,13 +191,15 @@ export default function IngredientSearch({ onChange }: Props) {
                                     maxLength={7}
                                     multiline={false}
                                 />
-                                <TouchableOpacity
-                                    style={[styles.unitButton, isPickerOpen && styles.unitButtonActive]}
-                                    onPress={() => setOpenUnitPicker(isPickerOpen ? null : id)}
-                                >
-                                    <Text style={styles.unitText}>{item.unitType}</Text>
-                                    <ChevronDown size={11} color={Colors.textSecondary} />
-                                </TouchableOpacity>
+                                <UnitDropdown
+                                    value={item.unitType}
+                                    selectedUnitID={item.unitID}
+                                    onSelect={(unit) => handleUnitSelect(id, unit)}
+                                    buttonStyle={styles.unitButton}
+                                    buttonActiveStyle={styles.unitButtonActive}
+                                    textStyle={styles.unitText}
+                                    iconSize={11}
+                                />
                                 <TouchableOpacity
                                     onPress={() => handleRemove(id)}
                                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -232,23 +208,6 @@ export default function IngredientSearch({ onChange }: Props) {
                                 </TouchableOpacity>
                             </View>
                         </View>
-
-                        {/* Dropdown unités sur les ingrédients déjà ajoutés */}
-                        {isPickerOpen && (
-                            <View style={styles.unitDropdown}>
-                                {UNITS.map(unit => (
-                                    <TouchableOpacity
-                                        key={unit.unitID}
-                                        style={[styles.unitOption, item.unitID === unit.unitID && styles.unitOptionActive]}
-                                        onPress={() => handleUnitSelect(id, unit)}
-                                    >
-                                        <Text style={[styles.unitOptionText, item.unitID === unit.unitID && styles.unitOptionTextActive]}>
-                                            {unit.type}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        )}
                     </View>
                 )
             })}
@@ -288,41 +247,13 @@ const styles = StyleSheet.create({
     suggestionText: { fontSize: FontSize.md, color: Colors.textPrimary },
     suggestionUnit: { fontSize: FontSize.sm, color: Colors.textSecondary },
 
-    // Staging
     stagingCard: {
         backgroundColor: Colors.surface,
         borderRadius: BorderRadius.md,
         borderWidth: 1,
         borderColor: Colors.primaryLight,
         marginTop: Spacing.sm,
-        overflow: 'hidden',
     },
-    unitChipsRow: {
-        flexDirection: 'row',
-        gap: Spacing.sm,
-        padding: Spacing.sm,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-        backgroundColor: Colors.background,
-    },
-    unitChip: {
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.xs,
-        borderRadius: BorderRadius.full,
-        borderWidth: 1,
-        borderColor: Colors.border,
-        backgroundColor: Colors.surface,
-    },
-    unitChipActive: {
-        backgroundColor: Colors.primary,
-        borderColor: Colors.primary,
-    },
-    unitChipText: {
-        fontSize: FontSize.sm,
-        color: Colors.textSecondary,
-        fontWeight: FontWeight.medium,
-    },
-    unitChipTextActive: { color: Colors.surface },
     stagingRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -355,14 +286,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
 
-    // Ingrédients ajoutés
     selectedItem: {
         backgroundColor: Colors.surface,
         borderRadius: BorderRadius.md,
         borderWidth: 1,
         borderColor: Colors.border,
         marginTop: Spacing.sm,
-        overflow: 'hidden',
     },
     itemRow: {
         flexDirection: 'row',
@@ -408,24 +337,4 @@ const styles = StyleSheet.create({
     },
     unitButtonActive: { borderColor: Colors.primary },
     unitText: { fontSize: FontSize.sm, color: Colors.textSecondary },
-    unitDropdown: {
-        flexDirection: 'row',
-        borderTopWidth: 1,
-        borderTopColor: Colors.border,
-        backgroundColor: Colors.background,
-    },
-    unitOption: {
-        flex: 1,
-        alignItems: 'center',
-        paddingVertical: Spacing.sm,
-        borderRightWidth: 1,
-        borderRightColor: Colors.border,
-    },
-    unitOptionActive: { backgroundColor: Colors.primary },
-    unitOptionText: {
-        fontSize: FontSize.sm,
-        color: Colors.textSecondary,
-        fontWeight: FontWeight.medium,
-    },
-    unitOptionTextActive: { color: Colors.surface },
 })

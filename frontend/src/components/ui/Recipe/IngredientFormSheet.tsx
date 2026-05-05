@@ -10,10 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
-  FlatList,
   ScrollView,
 } from "react-native";
-import { X, Search, ChevronDown, Check } from "lucide-react-native";
+import { X, Search, Check } from "lucide-react-native";
 import { Colors } from "../../../constants/colors";
 import { FontSize, FontWeight } from "../../../constants/typography";
 import { RecipeIngredient } from "../../../types/recipeIngredient";
@@ -21,6 +20,7 @@ import { Ingredient } from "../../../types/ingredient";
 import { searchIngredients } from "../../../services/ingredients.service";
 import { normalize } from "../../../utils/search";
 import { UNITS } from "../../../constants/units";
+import UnitDropdown from "../UnitDropdown";
 
 export type IngredientFormData = {
   ingredientID: number;
@@ -51,7 +51,6 @@ export default function IngredientFormSheet({
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
   const [unitID, setUnitID] = useState<number>(1);
-  const [showUnitPicker, setShowUnitPicker] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -61,7 +60,6 @@ export default function IngredientFormSheet({
       setUnit(ingredient?.unit?.type ?? "");
       setUnitID(ingredient?.unitID ?? 1);
       setSuggestions([]);
-      setShowUnitPicker(false);
     }
   }, [visible, ingredient]);
 
@@ -91,12 +89,6 @@ export default function IngredientFormSheet({
     if (defaultUnit) { setUnit(defaultUnit.type); setUnitID(defaultUnit.unitID); }
   };
 
-  const handleSelectUnit = (u: { unitID: number; type: string }) => {
-    setUnit(u.type);
-    setUnitID(u.unitID);
-    setShowUnitPicker(false);
-  };
-
   const handleSave = () => {
     if (!selectedIngredient) return;
     onSave({
@@ -124,7 +116,6 @@ export default function IngredientFormSheet({
         <View style={styles.sheet}>
           <View style={styles.handle} />
 
-          {/* Header avec X et ✓ */}
           <View style={styles.sheetHeader}>
             <Pressable onPress={onClose} hitSlop={8}>
               <X size={22} color={Colors.textPrimary} />
@@ -142,7 +133,6 @@ export default function IngredientFormSheet({
             </Pressable>
           </View>
 
-          {/* Search */}
           <Text style={styles.label}>Ingrédient</Text>
           <View style={styles.searchBar}>
             <Search size={18} color={Colors.textSecondary} />
@@ -162,7 +152,6 @@ export default function IngredientFormSheet({
             )}
           </View>
 
-          {/* Suggestions */}
           {suggestions.length > 0 && (
             <ScrollView
               style={styles.dropdown}
@@ -178,7 +167,6 @@ export default function IngredientFormSheet({
             </ScrollView>
           )}
 
-          {/* Quantity + Unit */}
           <View style={styles.row}>
             <View style={styles.quantityField}>
               <Text style={styles.label}>Quantité</Text>
@@ -198,37 +186,17 @@ export default function IngredientFormSheet({
             </View>
             <View style={styles.unitField}>
               <Text style={styles.label}>Unité</Text>
-              <Pressable style={styles.unitSelector} onPress={() => setShowUnitPicker((v) => !v)}>
-                <Text style={unit ? styles.unitText : styles.unitPlaceholder}>
-                  {unit || "Choisir"}
-                </Text>
-                <ChevronDown size={16} color={Colors.textSecondary} />
-              </Pressable>
+              <UnitDropdown
+                value={unit || "Choisir"}
+                selectedUnitID={unitID}
+                onSelect={(u) => { setUnit(u.type); setUnitID(u.unitID); }}
+                buttonStyle={[styles.unitSelector, !!unit && styles.unitSelectorFilled]}
+                buttonActiveStyle={styles.unitSelectorActive}
+                textStyle={unit ? styles.unitText : styles.unitPlaceholder}
+                iconSize={16}
+              />
             </View>
           </View>
-
-          {/* Unit picker */}
-          {showUnitPicker && (
-            <FlatList
-              data={UNITS}
-              horizontal
-              keyExtractor={(u) => String(u.unitID)}
-              showsHorizontalScrollIndicator={false}
-              style={styles.unitPicker}
-              contentContainerStyle={styles.unitPickerContent}
-              keyboardShouldPersistTaps="always"
-              renderItem={({ item: u }) => (
-                <Pressable
-                  style={[styles.unitChip, unit === u.type && styles.unitChipActive]}
-                  onPress={() => handleSelectUnit(u)}
-                >
-                  <Text style={[styles.unitChipText, unit === u.type && styles.unitChipTextActive]}>
-                    {u.type || "–"}
-                  </Text>
-                </Pressable>
-              )}
-            />
-          )}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -279,13 +247,8 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
 
-  checkButton: {
-    padding: 4,
-  },
-
-  checkButtonDisabled: {
-    opacity: 0.4,
-  },
+  checkButton: { padding: 4 },
+  checkButtonDisabled: { opacity: 0.4 },
 
   label: {
     fontSize: FontSize.sm,
@@ -333,15 +296,8 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
 
-  suggestionText: {
-    fontSize: FontSize.md,
-    color: Colors.textPrimary,
-  },
-
-  suggestionUnit: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-  },
+  suggestionText: { fontSize: FontSize.md, color: Colors.textPrimary },
+  suggestionUnit: { fontSize: FontSize.sm, color: Colors.textSecondary },
 
   row: {
     flexDirection: "row",
@@ -375,44 +331,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
 
-  unitText: {
-    fontSize: FontSize.md,
-    color: Colors.textPrimary,
-  },
+  unitSelectorFilled: { borderColor: Colors.border },
+  unitSelectorActive: { borderColor: Colors.primaryLight },
 
-  unitPlaceholder: {
-    fontSize: FontSize.md,
-    color: Colors.textSecondary,
-  },
-
-  unitPicker: { marginBottom: 16 },
-
-  unitPickerContent: {
-    gap: 8,
-    paddingVertical: 4,
-  },
-
-  unitChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-
-  unitChipActive: {
-    backgroundColor: Colors.primaryButton,
-    borderColor: Colors.primaryButton,
-  },
-
-  unitChipText: {
-    fontSize: FontSize.sm,
-    color: Colors.textPrimary,
-  },
-
-  unitChipTextActive: {
-    color: Colors.surface,
-    fontWeight: FontWeight.semibold,
-  },
+  unitText: { fontSize: FontSize.md, color: Colors.textPrimary },
+  unitPlaceholder: { fontSize: FontSize.md, color: Colors.textSecondary },
 });

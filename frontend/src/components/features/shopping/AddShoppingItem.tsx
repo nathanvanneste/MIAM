@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native'
-import { Plus, ChevronDown } from 'lucide-react-native'
+import { Plus } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
 import { ShoppingItem } from '@/src/types/shoppingList'
 import { Ingredient } from '@/src/types/ingredient'
 import { searchIngredients } from '@/src/services/ingredients.service'
 import { normalize } from '@/src/utils/search'
 import { UNITS } from '@/src/constants/units'
+import UnitDropdown from '@/src/components/ui/UnitDropdown'
 
 type Props = {
     listID: number
@@ -19,7 +20,6 @@ export default function AddShoppingItem({ listID, onAdd }: Props) {
     const [unitIndex, setUnitIndex] = useState(0)
     const [selectedIngredientID, setSelectedIngredientID] = useState<number | undefined>()
     const [suggestions, setSuggestions] = useState<Ingredient[]>([])
-    const [showUnitPicker, setShowUnitPicker] = useState(false)
 
     const currentUnit = UNITS[unitIndex]
 
@@ -41,14 +41,12 @@ export default function AddShoppingItem({ listID, onAdd }: Props) {
         }
     }
 
-    // Remplit le champ sans ajouter — l'utilisateur règle la quantité/unité puis tape +
     const handleSelectIngredient = (ingredient: Ingredient) => {
         const idx = UNITS.findIndex(u => u.type === ingredient.unitDefault)
         if (idx >= 0) setUnitIndex(idx)
         setSelectedIngredientID(ingredient.ingredientID)
         setName(ingredient.name)
         setSuggestions([])
-        setShowUnitPicker(false)
     }
 
     const handleAdd = () => {
@@ -65,29 +63,10 @@ export default function AddShoppingItem({ listID, onAdd }: Props) {
         setQuantity('')
         setSelectedIngredientID(undefined)
         setSuggestions([])
-        setShowUnitPicker(false)
     }
 
     return (
         <View>
-            {/* Sélecteur d'unité */}
-            {showUnitPicker && (
-                <View style={styles.unitPickerRow}>
-                    {UNITS.map((unit, idx) => (
-                        <TouchableOpacity
-                            key={unit.unitID}
-                            style={[styles.unitOption, unitIndex === idx && styles.unitOptionActive]}
-                            onPress={() => { setUnitIndex(idx); setShowUnitPicker(false) }}
-                        >
-                            <Text style={[styles.unitOptionText, unitIndex === idx && styles.unitOptionTextActive]}>
-                                {unit.type}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            )}
-
-            {/* Suggestions */}
             {suggestions.length > 0 && (
                 <ScrollView
                     style={styles.dropdown}
@@ -137,13 +116,17 @@ export default function AddShoppingItem({ listID, onAdd }: Props) {
                     maxLength={7}
                     multiline={false}
                 />
-                <TouchableOpacity
-                    style={[styles.unitButton, showUnitPicker && styles.unitButtonActive]}
-                    onPress={() => setShowUnitPicker(v => !v)}
-                >
-                    <Text style={styles.unitText}>{currentUnit.type}</Text>
-                    <ChevronDown size={10} color={Colors.textSecondary} />
-                </TouchableOpacity>
+                <UnitDropdown
+                    value={currentUnit.type}
+                    selectedUnitID={currentUnit.unitID}
+                    onSelect={(unit) => {
+                        const idx = UNITS.findIndex(u => u.unitID === unit.unitID)
+                        setUnitIndex(idx >= 0 ? idx : 0)
+                    }}
+                    buttonStyle={styles.unitButton}
+                    buttonActiveStyle={styles.unitButtonActive}
+                    textStyle={styles.unitText}
+                />
                 <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
                     <Plus size={20} color={Colors.surface} />
                 </TouchableOpacity>
@@ -153,32 +136,6 @@ export default function AddShoppingItem({ listID, onAdd }: Props) {
 }
 
 const styles = StyleSheet.create({
-    unitPickerRow: {
-        flexDirection: 'row',
-        gap: Spacing.sm,
-        marginBottom: Spacing.sm,
-        justifyContent: 'flex-end',
-    },
-    unitOption: {
-        paddingHorizontal: Spacing.md,
-        paddingVertical: Spacing.xs,
-        borderRadius: BorderRadius.full,
-        borderWidth: 1,
-        borderColor: Colors.border,
-        backgroundColor: Colors.surface,
-    },
-    unitOptionActive: {
-        backgroundColor: Colors.primary,
-        borderColor: Colors.primary,
-    },
-    unitOptionText: {
-        fontSize: FontSize.sm,
-        color: Colors.textSecondary,
-        fontWeight: FontWeight.medium,
-    },
-    unitOptionTextActive: {
-        color: Colors.surface,
-    },
     dropdown: {
         backgroundColor: Colors.surface,
         borderRadius: BorderRadius.md,
@@ -237,9 +194,7 @@ const styles = StyleSheet.create({
         minWidth: 46,
         justifyContent: 'center',
     },
-    unitButtonActive: {
-        borderColor: Colors.primary,
-    },
+    unitButtonActive: { borderColor: Colors.primary },
     unitText: { fontSize: FontSize.sm, color: Colors.textSecondary, fontWeight: FontWeight.medium },
     addButton: {
         width: ComponentSize.inputHeight,
