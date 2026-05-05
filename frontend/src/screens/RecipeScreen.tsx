@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { StyleSheet, ScrollView, ActivityIndicator, Alert, View, Text, Image, Pressable } from "react-native";
+import { StyleSheet, ScrollView, ActivityIndicator, Alert, View, Text, Image, Pressable, Share } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, X, Pencil, Share2, Bookmark, Camera, Clock, Flame } from "lucide-react-native";
@@ -12,6 +12,9 @@ import EditHeaderSheet from "@/src/components/ui/Recipe/EditHeaderSheet";
 import PrimaryButton from "@/src/components/ui/PrimaryButton";
 import UserAvatar from "@/src/components/ui/UserAvatar";
 import { getRecipeById, updateRecipe, updateRecipePhoto } from "@/src/services/recipes.service";
+import { getTags } from "@/src/services/tags.service";
+import TagChips from "@/src/components/ui/TagChips";
+import { Tag } from "@/src/types/recipe";
 import { saveRecipe, unsaveRecipe } from "@/src/services/users.service";
 import { uploadRecipePhoto, getSignedRecipePhotoUrl } from "@/src/services/storage.service";
 import { supabase } from "@/src/config/supabase";
@@ -26,7 +29,6 @@ const PHOTO_HEIGHT = 220;
 
 type RecipeScreenProps = {
   recipeID: number;
-  onShare?: () => void;
 };
 
 const formatTime = (minutes: number): string =>
@@ -41,7 +43,7 @@ const toBackendIngredients = (ingredients: RecipeIngredient[]) =>
     unitID: ing.unitID,
   }));
 
-export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
+export default function RecipeScreen({ recipeID }: RecipeScreenProps) {
   const router = useRouter();
   const { user: currentUser } = useAuth();
   const insets = useSafeAreaInsets();
@@ -53,6 +55,8 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [allTags, setAllTags] = useState<Tag[]>([])
+  const [selectedTagIDs, setSelectedTagIDs] = useState<number[]>([])
   const [headerSheetVisible, setHeaderSheetVisible] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -71,6 +75,7 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
         if (currentUser) {
           setIsSaved(data.savedBy?.some(s => s.userID === currentUser.id) ?? false);
         }
+        setSelectedTagIDs(data.tags?.map(t => t.tag.tagID) ?? [])
         if (data.photo) {
           if (data.photo.startsWith("http")) {
             setPhotoUrl(data.photo);
@@ -86,6 +91,8 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
     };
     load();
   }, [recipeID, currentUser]);
+
+  useEffect(() => { getTags().then(setAllTags).catch(() => {}) }, [])
 
   const markUnsaved = () => { hasUnsavedChanges.current = true; setIsDirty(true); };
 
@@ -137,6 +144,41 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
     }
   };
 
+  const handleShare = () => {
+    if (!recipe) return;
+    const lines: string[] = [];
+
+    lines.push(recipe.name.toUpperCase());
+    lines.push('');
+
+    const meta: string[] = [];
+    if (recipe.prepTime) meta.push(`Préparation : ${formatTime(recipe.prepTime)}`);
+    if (recipe.cookTime) meta.push(`Cuisson : ${formatTime(recipe.cookTime)}`);
+    if (recipe.portion) meta.push(`Pour ${recipe.portion} personne${recipe.portion > 1 ? 's' : ''}`);
+    if (meta.length) { lines.push(meta.join('  |  ')); lines.push(''); }
+
+    if (recipe.description) { lines.push(recipe.description); lines.push(''); }
+
+    if (recipe.ingredients.length > 0) {
+      lines.push('INGRÉDIENTS');
+      recipe.ingredients.forEach(ing => {
+        const qty = ing.quantity ? `${ing.quantity} ${ing.unit?.type ?? ''}`.trim() : '';
+        lines.push(`- ${qty ? qty + ' ' : ''}${ing.ingredient.name}`);
+      });
+      lines.push('');
+    }
+
+    if (recipe.steps.length > 0) {
+      lines.push('ÉTAPES');
+      recipe.steps
+        .slice()
+        .sort((a, b) => a.order - b.order)
+        .forEach((s, i) => lines.push(`${i + 1}. ${s.text}`));
+    }
+
+    Share.share({ message: lines.join('\n') });
+  };
+
   const handleSaveAll = async () => {
     if (!recipe) return;
     setIsSaving(true);
@@ -147,6 +189,7 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
         prepTime: recipe.prepTime,
         cookTime: recipe.cookTime,
         ingredients: toBackendIngredients(recipe.ingredients),
+        tagIDs: selectedTagIDs,
         steps: recipe.steps.map((s, i) => ({
           ...(s.stepID ? { stepID: s.stepID } : {}),
           text: s.text,
@@ -286,8 +329,8 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
               <Bookmark size={22} color="#fff" fill={isSaved ? "#fff" : "transparent"} />
             </Pressable>
           )}
-          {!isEditing && onShare && (
-            <Pressable onPress={onShare} style={styles.navBtn} hitSlop={8}>
+          {!isEditing && (
+            <Pressable onPress={handleShare} style={styles.navBtn} hitSlop={8}>
               <Share2 size={22} color="#fff" />
             </Pressable>
           )}
@@ -330,6 +373,26 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
           </View>
           {isEditing && (
             <Text style={styles.editingBanner}>Mode édition activé</Text>
+          )}
+          {isEditing && allTags.length > 0 && (
+            <TagChips
+              tags={allTags}
+              selectedIDs={new Set(selectedTagIDs)}
+              onToggle={(tagID) => {
+                setSelectedTagIDs(prev =>
+                  prev.includes(tagID) ? prev.filter(id => id !== tagID) : [...prev, tagID]
+                )
+                markUnsaved()
+              }}
+              horizontal={false}
+            />
+          )}
+          {!isEditing && (recipe.tags?.length ?? 0) > 0 && (
+            <TagChips
+              tags={recipe.tags!.map(t => t.tag)}
+              selectedIDs={new Set(recipe.tags!.map(t => t.tag.tagID))}
+              onToggle={() => {}}
+            />
           )}
         </View>
 

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, Alert, Image } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { KeyboardAvoidingView } from 'react-native'
@@ -6,11 +6,13 @@ import * as ImagePicker from 'expo-image-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import { ImagePlus, Clock, Users } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
-import { CreateRecipeDTO } from '@/src/types/recipe'
+import { CreateRecipeDTO, Tag } from '@/src/types/recipe'
 import PortionCounter from '@/src/components/features/recipe/PortionCounter'
 import IngredientSearch from '@/src/components/features/recipe/IngredientSearch'
 import StepList from '@/src/components/features/recipe/StepList'
+import TagChips from '@/src/components/ui/TagChips'
 import { createRecipe } from '@/src/services/recipes.service'
+import { getTags } from '@/src/services/tags.service'
 import { router } from 'expo-router'
 
 function SectionTitle({ number, title }: { number: string; title: string }) {
@@ -25,19 +27,26 @@ function SectionTitle({ number, title }: { number: string; title: string }) {
     )
 }
 
+const INITIAL_FORM: CreateRecipeDTO = {
+    name: '',
+    portions: 2,
+    prepTime: 0,
+    cookTime: 0,
+    recipeIngredients: [],
+    tagIDs: [],
+    steps: [],
+    description: '',
+    photoUri: undefined,
+}
+
 export default function CreateRecipeScreen() {
-    const [form, setForm] = useState<CreateRecipeDTO>({
-        name: '',
-        portions: 2,
-        prepTime: 0,
-        cookTime: 0,
-        recipeIngredients: [],
-        categories: [],
-        steps: [],
-        description: undefined,
-        photoUri: undefined,
-    })
+    const [formKey, setFormKey] = useState(0)
+    const [form, setForm] = useState<CreateRecipeDTO>(INITIAL_FORM)
     const [coverUri, setCoverUri] = useState<string | null>(null)
+    const [allTags, setAllTags] = useState<Tag[]>([])
+    const selectedTagIDs = new Set(form.tagIDs)
+
+    useEffect(() => { getTags().then(setAllTags).catch(() => {}) }, [])
 
     const pickCover = () => {
         Alert.alert('Photo de couverture', undefined, [
@@ -69,6 +78,13 @@ export default function CreateRecipeScreen() {
 
     const saving = useRef(false)
 
+    const resetForm = () => {
+        setForm(INITIAL_FORM)
+        setCoverUri(null)
+        setFormKey(k => k + 1)
+        saving.current = false
+    }
+
     const handleSave = async () => {
         if (saving.current) return
         if (!form.name.trim()) {
@@ -78,9 +94,8 @@ export default function CreateRecipeScreen() {
         saving.current = true
         try {
             await createRecipe(form)
-            Alert.alert('Succès', 'Recette créée !', [
-                { text: 'OK', onPress: () => router.replace('/(tabs)/profile') },
-            ])
+            resetForm()
+            router.replace('/(tabs)/profile')
         } catch (e: any) {
             saving.current = false
             Alert.alert('Erreur', e.message)
@@ -180,17 +195,26 @@ export default function CreateRecipeScreen() {
 
                         {/* 02 — Ingrédients */}
                         <SectionTitle number="02" title="Ingrédients" />
-                        <IngredientSearch onChange={(ingredients) => setForm({ ...form, recipeIngredients: ingredients })} />
+                        <IngredientSearch key={`ing-${formKey}`} onChange={(ingredients) => setForm(f => ({ ...f, recipeIngredients: ingredients }))} />
 
                         {/* 03 — Étapes */}
                         <SectionTitle number="03" title="Étapes" />
-                        <StepList onChange={(steps) => setForm({ ...form, steps })} />
+                        <StepList key={`steps-${formKey}`} onChange={(steps) => setForm(f => ({ ...f, steps }))} />
 
-                        {/* 04 — Catégories */}
-                        <SectionTitle number="04" title="Catégories" />
-                        <View style={styles.comingSoon}>
-                            <Text style={styles.comingSoonText}>Tags — à venir</Text>
-                        </View>
+                        {/* 04 — Tags */}
+                        <SectionTitle number="04" title="Tags" />
+                        <TagChips
+                            key={`tags-${formKey}`}
+                            tags={allTags}
+                            selectedIDs={selectedTagIDs}
+                            onToggle={(tagID) => setForm(f => ({
+                                ...f,
+                                tagIDs: selectedTagIDs.has(tagID)
+                                    ? f.tagIDs.filter(id => id !== tagID)
+                                    : [...f.tagIDs, tagID],
+                            }))}
+                            horizontal={false}
+                        />
 
                         {/* 05 — Description */}
                         <SectionTitle number="05" title="Description" />

@@ -1,12 +1,14 @@
 import { useState, useCallback, useEffect } from 'react'
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, RefreshControl, useWindowDimensions } from 'react-native'
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, RefreshControl, useWindowDimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { TouchableOpacity } from 'react-native'
 import { ArrowLeft } from 'lucide-react-native'
 import { router } from 'expo-router'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '@/src/constants'
-import type { Recipe } from '@/src/types/recipe'
+import type { Recipe, Tag } from '@/src/types/recipe'
 import { getUserRecipes } from '@/src/services/users.service'
+import { getTags } from '@/src/services/tags.service'
+import TagChips from '@/src/components/ui/TagChips'
 import UserAvatar from '@/src/components/ui/UserAvatar'
 import RecipeCard from '@/src/components/ui/Recipe/RecipeCard'
 
@@ -25,14 +27,22 @@ export default function UserProfileScreen({ userID, pseudo, firstName, lastName,
     const { width } = useWindowDimensions()
     const cardWidth = (width - H_PAD * 2 - COL_GAP) / 2
 
+    const PAGE_SIZE = 20
     const [recipes, setRecipes] = useState<Recipe[]>([])
+    const [allTags, setAllTags] = useState<Tag[]>([])
+    const [filterTagIDs, setFilterTagIDs] = useState<Set<number>>(new Set())
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
+    const [page, setPage] = useState(1)
+    const [hasMore, setHasMore] = useState(true)
+    const [loadingMore, setLoadingMore] = useState(false)
 
     const load = useCallback(async () => {
         try {
-            const r = await getUserRecipes(userID)
+            const r = await getUserRecipes(userID, 1, PAGE_SIZE)
             setRecipes(r)
+            setPage(1)
+            setHasMore(r.length === PAGE_SIZE)
         } catch {
         } finally {
             setLoading(false)
@@ -40,10 +50,28 @@ export default function UserProfileScreen({ userID, pseudo, firstName, lastName,
         }
     }, [userID])
 
+    const loadMore = useCallback(async () => {
+        if (loadingMore || !hasMore) return
+        setLoadingMore(true)
+        try {
+            const nextPage = page + 1
+            const more = await getUserRecipes(userID, nextPage, PAGE_SIZE)
+            setRecipes(prev => [...prev, ...more])
+            setPage(nextPage)
+            setHasMore(more.length === PAGE_SIZE)
+        } catch {}
+        finally { setLoadingMore(false) }
+    }, [loadingMore, hasMore, page, userID])
+
     useEffect(() => { load() }, [load])
+    useEffect(() => { getTags().then(setAllTags).catch(() => {}) }, [])
     const onRefresh = useCallback(() => { setRefreshing(true); load() }, [load])
 
-    const pairs = recipes.reduce<Recipe[][]>((acc, r, i) => {
+    const filtered = filterTagIDs.size === 0
+        ? recipes
+        : recipes.filter(r => r.tags?.some(t => filterTagIDs.has(t.tag.tagID)))
+
+    const pairs = filtered.reduce<Recipe[][]>((acc, r, i) => {
         if (i % 2 === 0) acc.push([r])
         else acc[acc.length - 1].push(r)
         return acc
@@ -60,9 +88,28 @@ export default function UserProfileScreen({ userID, pseudo, firstName, lastName,
                 <View style={{ width: 22 }} />
             </View>
 
+            {allTags.length > 0 && (
+                <TagChips
+                    tags={allTags}
+                    selectedIDs={filterTagIDs}
+                    onToggle={(tagID) => setFilterTagIDs(prev => {
+                        const next = new Set(prev)
+                        next.has(tagID) ? next.delete(tagID) : next.add(tagID)
+                        return next
+                    })}
+                />
+            )}
+
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
+                onMomentumScrollEnd={({ nativeEvent }) => {
+                    const { layoutMeasurement, contentOffset, contentSize } = nativeEvent
+                    if (contentOffset.y + layoutMeasurement.height >= contentSize.height - 300) {
+                        loadMore()
+                    }
+                }}
+                scrollEventThrottle={16}
             >
                 {/* Profil */}
                 <View style={styles.profile}>
@@ -78,7 +125,6 @@ export default function UserProfileScreen({ userID, pseudo, firstName, lastName,
                     </View>
                 </View>
 
-                {/* Recettes */}
                 {loading ? (
                     <ActivityIndicator style={{ marginTop: 40 }} color={Colors.primaryLight} />
                 ) : recipes.length === 0 ? (
@@ -96,6 +142,9 @@ export default function UserProfileScreen({ userID, pseudo, firstName, lastName,
                             </View>
                         ))}
                     </View>
+                )}
+                {loadingMore && (
+                    <ActivityIndicator style={{ marginVertical: 16 }} color={Colors.primaryLight} />
                 )}
             </ScrollView>
         </SafeAreaView>

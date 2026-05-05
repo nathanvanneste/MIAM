@@ -6,8 +6,13 @@ import { router } from 'expo-router'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '@/src/constants'
 import { Group } from '@/src/types/group'
 import { getGroup, removeRecipeFromGroup, leaveGroup } from '@/src/services/groups.service'
+import { getMyRelations, sendFriendRequest } from '@/src/services/friends.service'
+import { getTags } from '@/src/services/tags.service'
+import TagChips from '@/src/components/ui/TagChips'
+import type { Tag } from '@/src/types/recipe'
 import { groupColor } from '@/src/utils/groupColor'
 import { setPendingListID } from '@/src/utils/pendingListID'
+import { useAuth } from '@/src/hooks/useAuth'
 import UserAvatar from '@/src/components/ui/UserAvatar'
 import GroupRecipeCard from '@/src/components/features/group/GroupRecipeCard'
 import AddRecipeModal from '@/src/components/features/group/AddRecipeModal'
@@ -16,6 +21,7 @@ import AddMemberModal from '@/src/components/features/group/AddMemberModal'
 type Tab = 'recipes' | 'members'
 
 export default function GroupDetailScreen({ groupID }: { groupID: number }) {
+    const { user: currentUser } = useAuth()
     const [group, setGroup] = useState<Group | null>(null)
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
@@ -23,6 +29,10 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
     const [showAddRecipe, setShowAddRecipe] = useState(false)
     const [showAddMember, setShowAddMember] = useState(false)
     const [selectedIDs, setSelectedIDs] = useState<Set<number>>(new Set())
+    const [friendIDs, setFriendIDs] = useState<Set<string>>(new Set())
+    const [sentIDs, setSentIDs] = useState<Set<string>>(new Set())
+    const [allTags, setAllTags] = useState<Tag[]>([])
+    const [filterTagIDs, setFilterTagIDs] = useState<Set<number>>(new Set())
 
     const isSelecting = selectedIDs.size > 0
     const navigatingToList = useRef(false)
@@ -42,6 +52,22 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
 
     const onRefresh = useCallback(() => { setRefreshing(true); load() }, [load])
     useEffect(() => { load() }, [load])
+    useEffect(() => { getTags().then(setAllTags).catch(() => {}) }, [])
+    useEffect(() => {
+        getMyRelations().then(r => {
+            setFriendIDs(new Set(r.friends.map(f => f.userID)))
+            setSentIDs(new Set(r.sentPending.map(s => s.receiverID)))
+        }).catch(() => {})
+    }, [])
+
+    const handleAddFriend = async (userID: string) => {
+        setSentIDs(prev => new Set([...prev, userID]))
+        try {
+            await sendFriendRequest(userID)
+        } catch {
+            setSentIDs(prev => { const next = new Set(prev); next.delete(userID); return next })
+        }
+    }
 
     const handleLongPress = (recipeID: number) => {
         setSelectedIDs(prev => new Set([...prev, recipeID]))
@@ -97,6 +123,29 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
             ]
         )
     }
+
+    const allRecipes = group?.recipes ?? []
+    const filteredGroupRecipes = filterTagIDs.size === 0
+        ? allRecipes
+        : allRecipes
+            .map(gr => ({
+                gr,
+                matchCount: gr.recipe.tags?.filter(t => filterTagIDs.has(t.tag.tagID)).length ?? 0,
+            }))
+            .filter(x => x.matchCount > 0)
+            .sort((a, b) => b.matchCount - a.matchCount)
+            .map(x => x.gr)
+
+    // AND group: toutes les recettes ayant TOUS les tags sélectionnés
+    const andRecipes = filterTagIDs.size > 1
+        ? filteredGroupRecipes.filter(gr =>
+            (gr.recipe.tags?.filter(t => filterTagIDs.has(t.tag.tagID)).length ?? 0) === filterTagIDs.size)
+        : filteredGroupRecipes
+    // OR group: recettes ayant seulement une partie des tags (uniquement si plusieurs tags)
+    const orRecipes = filterTagIDs.size > 1
+        ? filteredGroupRecipes.filter(gr =>
+            (gr.recipe.tags?.filter(t => filterTagIDs.has(t.tag.tagID)).length ?? 0) < filterTagIDs.size)
+        : []
 
     if (loading || !group) {
         return (
@@ -180,9 +229,25 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
                 </TouchableOpacity>
             </View>
 
+            {/* Filtres tag (recettes uniquement, toujours visibles) */}
+            {tab === 'recipes' && allTags.length > 0 && group.recipes.length > 0 && (
+                <View style={styles.tagsBar}>
+                    <TagChips
+                        tags={allTags}
+                        selectedIDs={filterTagIDs}
+                        onToggle={(tagID) => setFilterTagIDs(prev => {
+                            const next = new Set(prev)
+                            next.has(tagID) ? next.delete(tagID) : next.add(tagID)
+                            return next
+                        })}
+                    />
+                </View>
+            )}
+
             {/* Contenu */}
             {tab === 'recipes' ? (
                 <ScrollView
+                    style={styles.tabScroll}
                     contentContainerStyle={styles.tabContent}
                     showsVerticalScrollIndicator={false}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
@@ -193,36 +258,103 @@ export default function GroupDetailScreen({ groupID }: { groupID: number }) {
                             <Text style={styles.tabEmptyTitle}>Aucune recette partagée</Text>
                             <Text style={styles.tabEmptyText}>Appuie sur + pour partager une recette</Text>
                         </View>
-                    ) : (
-                        <View style={styles.recipesGrid}>
-                            {group.recipes.map(gr => (
-                                <GroupRecipeCard
-                                    key={gr.recipeID}
-                                    recipe={gr.recipe}
-                                    isSelecting={isSelecting}
-                                    selected={selectedIDs.has(gr.recipeID)}
-                                    onPress={() => handleCardPress(gr.recipeID)}
-                                    onLongPress={() => handleLongPress(gr.recipeID)}
-                                />
-                            ))}
+                    ) : filteredGroupRecipes.length === 0 ? (
+                        <View style={styles.tabEmpty}>
+                            <Text style={styles.tabEmptyText}>Aucune recette ne correspond aux filtres.</Text>
                         </View>
+                    ) : (
+                        <>
+                            {/* Recettes correspondant à TOUS les tags */}
+                            {andRecipes.length > 0 && (
+                                <View style={styles.recipesGrid}>
+                                    {andRecipes.map(gr => (
+                                        <GroupRecipeCard
+                                            key={gr.recipeID}
+                                            recipe={gr.recipe}
+                                            isSelecting={isSelecting}
+                                            selected={selectedIDs.has(gr.recipeID)}
+                                            onPress={() => handleCardPress(gr.recipeID)}
+                                            onLongPress={() => handleLongPress(gr.recipeID)}
+                                        />
+                                    ))}
+                                </View>
+                            )}
+                            {/* Recettes correspondant à certains tags seulement */}
+                            {orRecipes.length > 0 && (
+                                <>
+                                    {andRecipes.length > 0 && (
+                                        <View style={styles.filterSeparator}>
+                                            <View style={styles.filterSeparatorLine} />
+                                            <Text style={styles.filterSeparatorText}>Tags partiels</Text>
+                                            <View style={styles.filterSeparatorLine} />
+                                        </View>
+                                    )}
+                                    <View style={styles.recipesGrid}>
+                                        {orRecipes.map(gr => (
+                                            <GroupRecipeCard
+                                                key={gr.recipeID}
+                                                recipe={gr.recipe}
+                                                isSelecting={isSelecting}
+                                                selected={selectedIDs.has(gr.recipeID)}
+                                                onPress={() => handleCardPress(gr.recipeID)}
+                                                onLongPress={() => handleLongPress(gr.recipeID)}
+                                            />
+                                        ))}
+                                    </View>
+                                </>
+                            )}
+                        </>
                     )}
                 </ScrollView>
             ) : (
                 <ScrollView
+                    style={styles.tabScroll}
                     contentContainerStyle={styles.tabContent}
                     showsVerticalScrollIndicator={false}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
                 >
-                    {group.members.map(m => (
-                        <View key={m.userID} style={styles.memberRow}>
-                            <UserAvatar user={m.user} size={46} />
-                            <View style={styles.memberInfo}>
-                                <Text style={styles.memberPseudo}>@{m.user.pseudo}</Text>
-                                <Text style={styles.memberName}>{m.user.firstName} {m.user.lastName}</Text>
-                            </View>
-                        </View>
-                    ))}
+                    {group.members.map(m => {
+                        const isSelf = m.userID === currentUser?.id
+                        const isFriend = friendIDs.has(m.userID)
+                        const isSent = sentIDs.has(m.userID)
+
+                        const inner = (
+                            <>
+                                <UserAvatar user={m.user} size={46} />
+                                <View style={styles.memberInfo}>
+                                    <Text style={styles.memberPseudo}>@{m.user.pseudo}</Text>
+                                    <Text style={styles.memberName}>{m.user.firstName} {m.user.lastName}</Text>
+                                </View>
+                                {isSelf && <Text style={styles.badgeSelf}>Moi</Text>}
+                                {!isSelf && isSent && <Text style={styles.badgePending}>En attente</Text>}
+                                {!isSelf && !isFriend && !isSent && (
+                                    <TouchableOpacity
+                                        onPress={() => handleAddFriend(m.userID)}
+                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    >
+                                        <UserPlus size={20} color={Colors.primary} />
+                                    </TouchableOpacity>
+                                )}
+                            </>
+                        )
+
+                        if (isFriend) {
+                            return (
+                                <TouchableOpacity
+                                    key={m.userID}
+                                    style={styles.memberRow}
+                                    activeOpacity={0.7}
+                                    onPress={() => router.push({
+                                        pathname: '/user/[userID]',
+                                        params: { userID: m.userID, pseudo: m.user.pseudo, firstName: m.user.firstName, lastName: m.user.lastName, avatar: m.user.avatar ?? '' },
+                                    })}
+                                >
+                                    {inner}
+                                </TouchableOpacity>
+                            )
+                        }
+                        return <View key={m.userID} style={styles.memberRow}>{inner}</View>
+                    })}
                     <TouchableOpacity style={styles.leaveBtn} onPress={handleLeave}>
                         <Text style={styles.leaveBtnText}>Quitter le groupe</Text>
                     </TouchableOpacity>
@@ -331,6 +463,13 @@ const styles = StyleSheet.create({
         fontWeight: FontWeight.semibold,
     },
 
+    tagsBar: {
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
+    },
+    tabScroll: {
+        flex: 1,
+    },
     tabContent: {
         padding: Spacing.xl,
         paddingBottom: 40,
@@ -340,6 +479,25 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: Spacing.sm,
+    },
+
+    filterSeparator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        marginVertical: Spacing.md,
+    },
+    filterSeparatorLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: Colors.border,
+    },
+    filterSeparatorText: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.medium,
+        color: Colors.textSecondary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.8,
     },
 
     tabEmpty: {
@@ -370,7 +528,7 @@ const styles = StyleSheet.create({
         padding: Spacing.md,
         marginBottom: Spacing.sm,
     },
-    memberInfo: { flex: 1 },
+    memberInfo: { flex: 1, minWidth: 0 },
     memberPseudo: {
         fontSize: FontSize.md,
         fontWeight: FontWeight.semibold,
@@ -380,6 +538,23 @@ const styles = StyleSheet.create({
         fontSize: FontSize.sm,
         color: Colors.textSecondary,
         marginTop: 2,
+    },
+
+    badgeSelf: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.medium,
+        color: Colors.textSecondary,
+        backgroundColor: Colors.surface,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        borderRadius: BorderRadius.full,
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: 2,
+    },
+    badgePending: {
+        fontSize: FontSize.xs,
+        fontWeight: FontWeight.medium,
+        color: Colors.textSecondary,
     },
 
     leaveBtn: {

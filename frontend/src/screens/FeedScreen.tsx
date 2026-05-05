@@ -4,9 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Users } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing } from '@/src/constants'
 import { FeedRecipe, getFeed } from '@/src/services/recipes.service'
+import { getTags } from '@/src/services/tags.service'
 import RecipeCard from '@/src/components/ui/Recipe/RecipeCard'
 import SearchBar from '@/src/components/ui/SearchBar'
+import TagChips from '@/src/components/ui/TagChips'
 import { sortByMatch } from '@/src/utils/search'
+import type { Tag } from '@/src/types/recipe'
 
 const H_PAD = Spacing.md
 const COL_GAP = Spacing.sm
@@ -57,7 +60,12 @@ export default function FeedScreen() {
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
     const [hasData, setHasData] = useState(false)
-    const [headerHeight, setHeaderHeight] = useState(0)
+    // titleSearchHeight: just the animated header (title + search bar)
+    const [titleSearchHeight, setTitleSearchHeight] = useState(0)
+    // tagsBarHeight: the always-visible tags strip
+    const [tagsBarHeight, setTagsBarHeight] = useState(0)
+    const [allTags, setAllTags] = useState<Tag[]>([])
+    const [filterTagIDs, setFilterTagIDs] = useState<Set<number>>(new Set())
 
     const translateY = useRef(new Animated.Value(0)).current
     const lastScrollY = useRef(0)
@@ -72,16 +80,17 @@ export default function FeedScreen() {
     const hideHeader = useCallback(() => {
         if (!headerVisible.current) return
         headerVisible.current = false
-        Animated.timing(translateY, { toValue: -headerHeight, duration: 200, useNativeDriver: true }).start()
-    }, [translateY, headerHeight])
+        // Only slide up the title+search portion; tags bar follows to top
+        Animated.timing(translateY, { toValue: -titleSearchHeight, duration: 200, useNativeDriver: true }).start()
+    }, [translateY, titleSearchHeight])
 
     const handleScroll = useCallback((e: any) => {
         const y = e.nativeEvent.contentOffset.y
         const dy = y - lastScrollY.current
         lastScrollY.current = y
-        if (dy > 5 && y > headerHeight) hideHeader()
+        if (dy > 5 && y > titleSearchHeight + tagsBarHeight) hideHeader()
         else if (dy < -5) showHeader()
-    }, [headerHeight, hideHeader, showHeader])
+    }, [titleSearchHeight, tagsBarHeight, hideHeader, showHeader])
 
     const load = useCallback(async () => {
         try {
@@ -98,22 +107,29 @@ export default function FeedScreen() {
     }, [])
 
     useEffect(() => { load() }, [load])
+    useEffect(() => { getTags().then(setAllTags).catch(() => {}) }, [])
     const onRefresh = useCallback(() => {
         showHeader()
         setRefreshing(true)
         load()
     }, [load, showHeader])
 
+    const applyTagFilter = (list: FeedRecipe[]) =>
+        filterTagIDs.size === 0 ? list : list.filter(r => r.tags?.some(t => filterTagIDs.has(t.tag.tagID)))
+
     const items: FeedItem[] = hasData
-        ? buildItems(recent, random, search)
+        ? buildItems(applyTagFilter(recent), applyTagFilter(random), search)
         : [{ type: 'empty', message: 'Impossible de charger le fil.' }]
+
+    const totalHeaderHeight = titleSearchHeight + tagsBarHeight
 
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.inner}>
+                {/* Title + search: slides up/down on scroll */}
                 <Animated.View
-                    style={[styles.header, { transform: [{ translateY }] }]}
-                    onLayout={e => setHeaderHeight(e.nativeEvent.layout.height)}
+                    style={[styles.titleSearch, { transform: [{ translateY }] }]}
+                    onLayout={e => setTitleSearchHeight(e.nativeEvent.layout.height)}
                 >
                     <Text style={styles.title}>Fil</Text>
                     <SearchBar
@@ -123,6 +139,27 @@ export default function FeedScreen() {
                     />
                 </Animated.View>
 
+                {/* Tags bar: sits below title+search, slides up with it, always on screen */}
+                {allTags.length > 0 && (
+                    <Animated.View
+                        style={[styles.tagsBar, { top: titleSearchHeight, transform: [{ translateY }] }]}
+                        onLayout={e => setTagsBarHeight(e.nativeEvent.layout.height)}
+                    >
+                        <TagChips
+                            tags={allTags}
+                            selectedIDs={filterTagIDs}
+                            onToggle={(tagID) => {
+                                showHeader()
+                                setFilterTagIDs(prev => {
+                                    const next = new Set(prev)
+                                    next.has(tagID) ? next.delete(tagID) : next.add(tagID)
+                                    return next
+                                })
+                            }}
+                        />
+                    </Animated.View>
+                )}
+
             {loading ? (
                 <ActivityIndicator style={{ flex: 1 }} color={Colors.primaryLight} />
             ) : (
@@ -131,7 +168,7 @@ export default function FeedScreen() {
                     keyExtractor={(item, i) =>
                         item.type === 'pair' ? `pair-${item.items[0].recipeID}` : `${item.type}-${i}`
                     }
-                    contentContainerStyle={[styles.list, { paddingTop: headerHeight + Spacing.md }]}
+                    contentContainerStyle={[styles.list, { paddingTop: totalHeaderHeight + Spacing.md }]}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                     scrollEventThrottle={16}
@@ -179,7 +216,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
     inner: { flex: 1 },
 
-    header: {
+    titleSearch: {
         position: 'absolute',
         top: 0,
         left: 0,
@@ -188,8 +225,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: Spacing.xl,
         paddingTop: Spacing.lg,
         paddingBottom: Spacing.sm,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
         backgroundColor: Colors.background,
         gap: Spacing.sm,
     },
@@ -197,6 +232,17 @@ const styles = StyleSheet.create({
         fontSize: 32,
         fontWeight: FontWeight.bold,
         color: Colors.primary,
+    },
+
+    tagsBar: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        zIndex: 9,
+        backgroundColor: Colors.background,
+        paddingBottom: Spacing.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
     },
 
     list: {

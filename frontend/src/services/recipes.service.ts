@@ -23,8 +23,8 @@ export type FeedRecipe = RecipeDetail & {
 
 export type FeedResult = { recent: FeedRecipe[]; random: FeedRecipe[] }
 
-export const getMyRecipes = async (): Promise<RecipeDetail[]> =>
-  apiFetch('/recipes/me', { method: 'GET' })
+export const getMyRecipes = async (page = 1, limit = 20): Promise<RecipeDetail[]> =>
+  apiFetch(`/recipes/me?page=${page}&limit=${limit}`, { method: 'GET' })
 
 export const getFeed = async (): Promise<FeedResult> =>
   apiFetch('/recipes/feed', { method: 'GET' })
@@ -48,6 +48,7 @@ export const createRecipe = async (form: CreateRecipeDTO): Promise<Recipe> => {
       description: form.description,
       ingredients: form.recipeIngredients,
       steps: form.steps,
+      tagIDs: form.tagIDs,
     }),
   });
 
@@ -97,6 +98,7 @@ export const updateRecipe = async (
     portion: number;
     ingredients: any[];
     steps: any[];
+    tagIDs: number[];
   }>
 ): Promise<Recipe> => {
   return await apiFetch(`/recipes/${recipeID}`, {

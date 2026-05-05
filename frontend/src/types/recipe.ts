@@ -1,6 +1,10 @@
 import { CreateRecipeIngredientDTO, RecipeIngredient } from "./recipeIngredient";
 import { CreateStepDTO, Step } from './step'
 
+export type Tag = {
+    tagID: number
+    name: string
+}
 
 export type Recipe = {
     recipeID: number;
@@ -13,7 +17,7 @@ export type Recipe = {
     description?: string | null;
     ingredients: RecipeIngredient[];
     steps: Step[];
-
+    tags?: { tag: Tag }[];
 };
 
 export type CreateRecipeDTO = {
@@ -23,7 +27,7 @@ export type CreateRecipeDTO = {
     cookTime: number
     steps: CreateStepDTO[]
     recipeIngredients: CreateRecipeIngredientDTO[]
-    categories: string[]
+    tagIDs: number[]
     description?: string
     photoUri?: string
 }

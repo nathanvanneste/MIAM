@@ -45,8 +45,8 @@ export async function deleteMe(): Promise<void> {
   await apiFetch('/users/me', { method: 'DELETE' });
 }
 
-export async function getUserRecipes(userID: string): Promise<Recipe[]> {
-  return apiFetch(`/users/${userID}/recipes`, { method: 'GET' });
+export async function getUserRecipes(userID: string, page = 1, limit = 20): Promise<Recipe[]> {
+  return apiFetch(`/users/${userID}/recipes?page=${page}&limit=${limit}`, { method: 'GET' });
 }
 
 export type SavedRecipeItem = {
