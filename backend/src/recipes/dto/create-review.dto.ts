@@ -7,7 +7,4 @@ export class CreateReviewDto {
   @Max(5)
   rating!: number;
 
-  @IsOptional()
-  @IsString()
-  comment?: string;
 }
