@@ -32,20 +32,25 @@ export async function register(form: RegisterDTO) {
     );
   }
 
-  await apiFetch('/users/me', {
-    method: 'POST',
-    body: JSON.stringify({
-      firstName: form.firstName,
-      lastName: form.lastName,
-      pseudo: form.pseudo,
-    }),
-  });
+  try {
+    await apiFetch('/users/me', {
+      method: 'POST',
+      body: JSON.stringify({
+        firstName: form.firstName,
+        lastName: form.lastName,
+        pseudo: form.pseudo,
+      }),
+    });
+  } catch (e: any) {
+    // Rollback : supprime l'utilisateur de Supabase Auth pour libérer l'email
+    await apiFetch('/users/me', { method: 'DELETE' }).catch(() => {})
+    throw new Error(e.message || "Impossible de créer le profil")
+  }
 
   if (form.avatarUri) {
     const avatarPath = await uploadAvatar(form.avatarUri, user.id);
     await updateMyAvatar(avatarPath);
   }
-
 
   return data;
 }

@@ -119,8 +119,6 @@ export default function RegisterScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* Résumé Temporaire à supprimer à la fin */}
-                    <Text style={styles.hint}>Résumé Temporaire : {form.firstName} {form.lastName} : {form.email}, {form.pseudo}, {form.password}</Text>
 
                 </ScrollView>
             </KeyboardAvoidingView>

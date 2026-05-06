@@ -89,18 +89,21 @@ export default function UserProfileScreen({ userID, pseudo, firstName, lastName,
             </View>
 
             {allTags.length > 0 && (
-                <TagChips
-                    tags={allTags}
-                    selectedIDs={filterTagIDs}
-                    onToggle={(tagID) => setFilterTagIDs(prev => {
-                        const next = new Set(prev)
-                        next.has(tagID) ? next.delete(tagID) : next.add(tagID)
-                        return next
-                    })}
-                />
+                <View style={styles.tagsBar}>
+                    <TagChips
+                        tags={allTags}
+                        selectedIDs={filterTagIDs}
+                        onToggle={(tagID) => setFilterTagIDs(prev => {
+                            const next = new Set(prev)
+                            next.has(tagID) ? next.delete(tagID) : next.add(tagID)
+                            return next
+                        })}
+                    />
+                </View>
             )}
 
             <ScrollView
+                style={styles.scroll}
                 showsVerticalScrollIndicator={false}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primaryLight} />}
                 onMomentumScrollEnd={({ nativeEvent }) => {
@@ -153,6 +156,12 @@ export default function UserProfileScreen({ userID, pseudo, firstName, lastName,
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
+    tagsBar: {
+        flexShrink: 0,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.border,
+    },
+    scroll: { flex: 1 },
 
     header: {
         flexDirection: 'row',
