@@ -15,11 +15,10 @@
       }
     },
     "android": {
-      //  "package": "com.miam.app",
+      "package": "com.miam.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFF7EA",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
@@ -27,7 +26,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/icon.png"
     },
     "plugins": [
       "expo-router",
@@ -47,12 +46,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-      //} ,
-      //"extra": {
-      //  "router": {},
-      //  "eas": {
-      //    "projectId": "d1d3d0e2-8742-47b2-a29d-7b661af1b9c3"
-      //  }
+      } ,
+      "extra": {
+        "router": {},
+        "eas": {
+          "projectId": "d1d3d0e2-8742-47b2-a29d-7b661af1b9c3"
+        }
     }
   }
 }
