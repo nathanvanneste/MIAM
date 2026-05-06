@@ -82,7 +82,8 @@ INSTRUCTIONS IMPORTANTES:
 - Génère toujours une courte description (2-3 phrases) même si elle n'est pas mentionnée
 - Pour les portions : si pas mentionné, estime 4 personnes par défaut
 - Pour les temps : si pas mentionné, estime raisonnablement (préparation 15-30min, cuisson selon le type de plat)
-- Pour les ingrédients : liste tous ceux mentionnés avec quantités et unités non nulles
+- Pour les ingrédients : liste uniquement ceux qui sont explicitement mentionnés dans la transcription, avec quantités et unités non nulles
+- Ne rajoute pas d'ingrédients supplémentaires qui ne sont pas clairement indiqués dans le texte dicté
 - Pour chaque ingrédient : quantity ne doit jamais être null, unit ne doit jamais être null
 - Utilise uniquement ces unités autorisées : g, mL, unité, kg, mg, cL, L, pièce, tranche, tranches, gousse, branche, feuille, pincée, poignée, c. à c., c. à s., sachet, bouquet
 - Pour les étapes : décompose en étapes logiques numérotées
@@ -260,18 +261,10 @@ Sois créatif et logique dans tes estimations!`;
       }
 
       try {
-        // Chercher l'ingrédient par nom (case-insensitive)
-        const dbIngredient = await this.prismaService.ingredient.findFirst({
-          where: {
-            name: {
-              mode: 'insensitive',
-              equals: ingredientName,
-            },
-          },
-        });
+        const dbIngredient = await this.findIngredientMatch(ingredientName);
 
         if (!dbIngredient) {
-          console.warn(`Ingrédient "${ingredientName}" non trouvé dans la BD, ignoré`);
+          console.warn(`Ingrédient "${ingredientName}" non trouvé dans la BD après recherche floue, ignoré`);
           continue;
         }
 
@@ -308,6 +301,103 @@ Sois créatif et logique dans tes estimations!`;
     }
 
     return result;
+  }
+
+  private async findIngredientMatch(name: string) {
+    const cleaned = name.trim();
+    const singular = this.singularizeIngredientName(cleaned);
+
+    const exact = await this.prismaService.ingredient.findFirst({
+      where: {
+        name: {
+          mode: 'insensitive',
+          equals: cleaned,
+        },
+      },
+    });
+    if (exact) return exact;
+
+    const singularMatch = cleaned !== singular ? await this.prismaService.ingredient.findFirst({
+      where: {
+        name: {
+          mode: 'insensitive',
+          equals: singular,
+        },
+      },
+    }) : null;
+    if (singularMatch) return singularMatch;
+
+    const containsMatch = await this.prismaService.ingredient.findFirst({
+      where: {
+        name: {
+          mode: 'insensitive',
+          contains: cleaned,
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+    if (containsMatch) return containsMatch;
+
+    if (singular !== cleaned) {
+      const singularContains = await this.prismaService.ingredient.findFirst({
+        where: {
+          name: {
+            mode: 'insensitive',
+            contains: singular,
+          },
+        },
+        orderBy: { name: 'asc' },
+      });
+      if (singularContains) return singularContains;
+    }
+
+    const stopWords = new Set(['de', 'du', 'des', 'la', 'le', 'les', 'et', 'à', 'au', 'aux', 'pour', 'avec', 'en', 'sur']);
+    const tokens = cleaned
+      .split(/\s+/)
+      .map(token => token.replace(/[^\p{L}0-9]/gu, '').toLowerCase())
+      .filter(Boolean)
+      .filter(token => token.length >= 4 && !stopWords.has(token));
+
+    for (const token of tokens) {
+      const tokenMatch = await this.prismaService.ingredient.findFirst({
+        where: {
+          name: {
+            mode: 'insensitive',
+            contains: token,
+          },
+        },
+        orderBy: { name: 'asc' },
+      });
+      if (tokenMatch) return tokenMatch;
+    }
+
+    return null;
+  }
+
+  private singularizeIngredientName(name: string): string {
+    const lower = name.toLowerCase().trim();
+    if (lower.endsWith(' pommes de terre')) {
+      return lower.replace(/ pommes de terre$/, ' pomme de terre');
+    }
+    if (lower.endsWith(' oeufs')) {
+      return lower.replace(/ oeufs$/, ' oeuf');
+    }
+    if (lower.endsWith(' poivrons')) {
+      return lower.replace(/ poivrons$/, ' poivron');
+    }
+    if (lower.endsWith(' tranches')) {
+      return lower.replace(/ tranches$/, ' tranche');
+    }
+    if (lower.endsWith(' feuilles')) {
+      return lower.replace(/ feuilles$/, ' feuille');
+    }
+    if (lower.endsWith(' gousses')) {
+      return lower.replace(/ gousses$/, ' gousse');
+    }
+    if (lower.endsWith('s') && !lower.endsWith('ss')) {
+      return lower.slice(0, -1);
+    }
+    return lower;
   }
 
   /**

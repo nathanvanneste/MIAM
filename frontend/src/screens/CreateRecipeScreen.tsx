@@ -27,7 +27,7 @@ function SectionTitle({ number, title }: { number: string; title: string }) {
 export default function CreateRecipeScreen() {
     const { prefill } = useLocalSearchParams<{ prefill?: string }>();
     
-    const [form, setForm] = useState<CreateRecipeDTO>({
+    const initialForm: CreateRecipeDTO = {
         name: '',
         portions: 2,
         prepTime: 0,
@@ -37,7 +37,9 @@ export default function CreateRecipeScreen() {
         steps: [],
         description: undefined,
         photoUri: undefined,
-    })
+    }
+
+    const [form, setForm] = useState<CreateRecipeDTO>(initialForm)
     const [coverUri, setCoverUri] = useState<string | null>(null)
 
     // Préremplir les données si elles viennent de la dictée vocale
@@ -96,6 +98,8 @@ export default function CreateRecipeScreen() {
         }
         try {
             await createRecipe(form)
+            setForm(initialForm)
+            setCoverUri(null)
             Alert.alert('Succès', 'Recette créée !', [
                 { text: 'OK', onPress: () => router.replace('/(tabs)/profile') },
             ])

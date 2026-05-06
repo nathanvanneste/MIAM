@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native'
 import { X, ChevronDown, Plus } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
@@ -34,6 +34,7 @@ export default function IngredientSearch({ initialIngredients = [], onChange }: 
     const [showStagedUnitPicker, setShowStagedUnitPicker] = useState(false)
     const [selected, setSelected] = useState<SelectedIngredient[]>([])
     const [openUnitPicker, setOpenUnitPicker] = useState<number | null>(null)
+    const hasInitializedRef = useRef(false)
 
     const normalizeUnitType = useCallback((unit?: string): string => {
         if (!unit) return 'unité'
@@ -158,6 +159,7 @@ export default function IngredientSearch({ initialIngredients = [], onChange }: 
     }
 
     useEffect(() => {
+        if (hasInitializedRef.current) return
         if (initialIngredients.length > 0) {
             const preloaded = initialIngredients.map((item, index) => ({
                 ingredientID: item.ingredientID,
@@ -167,6 +169,7 @@ export default function IngredientSearch({ initialIngredients = [], onChange }: 
                 unitID: getUnitID(item.unitType),
             }))
             setSelected(preloaded)
+            hasInitializedRef.current = true
         }
     }, [initialIngredients, getUnitID, normalizeUnitType])
 
@@ -254,9 +257,18 @@ export default function IngredientSearch({ initialIngredients = [], onChange }: 
                             <View style={styles.controls}>
                                 <TextInput
                                     style={styles.quantityInput}
-                                    value={String(item.quantity)}
+                                    value={item.quantity === 0 ? '' : String(item.quantity)}
                                     keyboardType="numeric"
                                     onChangeText={(text) => handleQuantityChange(id, text)}
+                                    onBlur={() => {
+                                        const updated = selected.map(s =>
+                                            s.ingredientID === id && s.quantity <= 0
+                                                ? { ...s, quantity: 1 }
+                                                : s
+                                        )
+                                        setSelected(updated)
+                                        notify(updated)
+                                    }}
                                     selectTextOnFocus
                                     multiline={false}
                                 />
