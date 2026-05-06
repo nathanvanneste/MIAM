@@ -130,7 +130,7 @@ export class RecipesService {
     return this.prisma.recipe.create({
       data: {
         ...recipeData,
-
+        description: recipeData.description ?? '',
 
         creator: {
           connect: { userID },
