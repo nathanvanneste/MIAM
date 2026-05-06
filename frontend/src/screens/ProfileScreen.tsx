@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { useFocusEffect , router } from "expo-router";
 import SearchBar from "../components/ui/SearchBar";
 import RecipeCard from "../components/ui/Recipe/RecipeCard";
 import { Colors } from "../constants/colors";
@@ -9,7 +10,6 @@ import type { Recipe } from "../types/recipe";
 import Grid from "../components/ui/Recipe/RecipeGrid";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ProfileDescription from "../components/ui/Profile/ProfileDescription";
-import { router } from "expo-router";
 import { getSignedAvatarUrl } from "../services/storage.service";
 import { getMe, type User } from "../services/users.service";
 import { getMyRecipes } from "../services/recipes.service";
@@ -40,10 +40,19 @@ export default function ProfileScreen() {
                 getSignedAvatarUrl(me.avatar).then(setAvatarUrl).catch(() => {});
             }
         } catch (error) {
-            console.error("Erreur chargement profil :", error);
+             
+            console.error("Erreur chargement profil :", error instanceof Error ? error.message : String(error));
         }
     }, []);
 
+    // Reload profile every time we focus on this screen
+    useFocusEffect(
+        useCallback(() => {
+            loadProfile();
+        }, [loadProfile])
+    );
+
+    // Also run on initial mount as backup
     useEffect(() => { loadProfile() }, [loadProfile]);
 
     const filteredRecipes = recipes.filter((r) =>

@@ -1,7 +1,7 @@
 import {
   Injectable,
   NotFoundException,
-  ForbiddenException
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateShoppingListDto } from './dto/update-shopping-list.dto';
@@ -211,7 +211,7 @@ export class ShoppingListsService {
 
     if (!shoppingList) {
       throw new NotFoundException(
-        "Liste de courses personnelle introuvable pour cet utilisateur.",
+        'Liste de courses personnelle introuvable pour cet utilisateur.',
       );
     }
 
@@ -220,7 +220,7 @@ export class ShoppingListsService {
 
   async importRecipe(userID: string, listID: number, recipeID: number) {
     // Récupère la liste ciblée avec son groupe pour vérifier les droits d'accès.
-      await this.assertCanAccessShoppingList(userID, listID);
+    await this.assertCanAccessShoppingList(userID, listID);
 
     // Récupère la recette avec ses ingrédients pour les convertir en items.
     const recipe = await this.prisma.recipe.findUnique({
@@ -260,5 +260,4 @@ export class ShoppingListsService {
     // Retourne la liste mise à jour pour rafraîchir le frontend.
     return this.findOne(userID, listID);
   }
-
 }

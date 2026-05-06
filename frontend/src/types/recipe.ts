@@ -23,7 +23,7 @@ export type CreateRecipeDTO = {
     cookTime: number
     steps: CreateStepDTO[]
     recipeIngredients: CreateRecipeIngredientDTO[]
-    categories: string[]
+    tagIDs?: number[]
     description?: string
     photoUri?: string
 }

@@ -42,3 +42,18 @@ export async function updateMe(data: {
 export async function deleteMe(): Promise<void> {
   await apiFetch('/users/me', { method: 'DELETE' });
 }
+
+export async function getTags(): Promise<{ tagID: number; name: string }[]> {
+  return apiFetch('/tags', { method: 'GET' });
+}
+
+export async function saveUserPreferences(tagNames: string[]): Promise<any> {
+  return apiFetch('/users/me/preferences', {
+    method: 'POST',
+    body: JSON.stringify({ tagNames }),
+  });
+}
+
+export async function getMyPreferences(): Promise<any> {
+  return apiFetch('/users/me/preferences', { method: 'GET' });
+}

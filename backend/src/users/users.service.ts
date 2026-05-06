@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  ForbiddenException
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 //import { CreateUserDto } from './dto/create-user.dto';
@@ -22,20 +22,6 @@ type AuthUser = {
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-private readonly include = {
-  recipes: true,
-  savedRecipes: {
-    include: {
-      recipe: true,
-    },
-  },
-  reviews: true,
-  shoppingList: true,
-  sentFriendships: true,
-  receivedFriendships: true,
-  groupMemberships: true,
-};
-
   async createMyProfile(authUser: AuthUser, dto: CreateMyProfileDto) {
     const existingUser = await this.prisma.user.findUnique({
       where: {
@@ -48,7 +34,9 @@ private readonly include = {
     }
 
     if (!authUser.email) {
-      throw new BadRequestException("Impossible de créer le profil : l'email est absent du token.");
+      throw new BadRequestException(
+        "Impossible de créer le profil : l'email est absent du token.",
+      );
     }
 
     return this.prisma.user.create({
@@ -80,7 +68,80 @@ private readonly include = {
   async findOne(userID: string) {
     const user = await this.prisma.user.findUnique({
       where: { userID },
-      include: this.include,
+      include: {
+        recipes: {
+          select: {
+            recipeID: true,
+            name: true,
+            photo: true,
+            prepTime: true,
+            cookTime: true,
+            createdAt: true,
+          },
+        },
+        savedRecipes: {
+          include: {
+            recipe: {
+              select: {
+                recipeID: true,
+                name: true,
+                photo: true,
+                prepTime: true,
+                cookTime: true,
+                createdAt: true,
+              },
+            },
+          },
+        },
+        reviews: {
+          select: {
+            reviewID: true,
+            rating: true,
+          },
+        },
+        shoppingList: {
+          select: {
+            listID: true,
+            name: true,
+          },
+        },
+        sentFriendships: {
+          select: {
+            friendshipID: true,
+            status: true,
+            receiver: {
+              select: {
+                userID: true,
+                pseudo: true,
+                avatar: true,
+              },
+            },
+          },
+        },
+        receivedFriendships: {
+          select: {
+            friendshipID: true,
+            status: true,
+            requester: {
+              select: {
+                userID: true,
+                pseudo: true,
+                avatar: true,
+              },
+            },
+          },
+        },
+        groupMemberships: {
+          select: {
+            group: {
+              select: {
+                groupID: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!user) {
@@ -124,7 +185,7 @@ private readonly include = {
     });
   }
 
-  async sendFriendRequest(requesterID: string, dto: CreateFriendshipDto) {    
+  async sendFriendRequest(requesterID: string, dto: CreateFriendshipDto) {
     if (requesterID === dto.receiverID) {
       throw new ConflictException('Cannot add yourself');
     }
@@ -245,39 +306,39 @@ private readonly include = {
   }
 
   async saveRecipe(userID: string, recipeID: number) {
-  await this.findOne(userID);
+    await this.findOne(userID);
 
-  const recipe = await this.prisma.recipe.findUnique({
-    where: { recipeID },
-  });
+    const recipe = await this.prisma.recipe.findUnique({
+      where: { recipeID },
+    });
 
-  if (!recipe) {
-    throw new NotFoundException(`Recipe with ID ${recipeID} not found`);
-  }
+    if (!recipe) {
+      throw new NotFoundException(`Recipe with ID ${recipeID} not found`);
+    }
 
-  const existing = await this.prisma.savedRecipe.findUnique({
-    where: {
-      userID_recipeID: {
+    const existing = await this.prisma.savedRecipe.findUnique({
+      where: {
+        userID_recipeID: {
+          userID,
+          recipeID,
+        },
+      },
+    });
+
+    if (existing) {
+      throw new ConflictException('Recipe already saved by this user');
+    }
+
+    return this.prisma.savedRecipe.create({
+      data: {
         userID,
         recipeID,
       },
-    },
-  });
-
-  if (existing) {
-    throw new ConflictException('Recipe already saved by this user');
+      include: {
+        recipe: true,
+      },
+    });
   }
-
-  return this.prisma.savedRecipe.create({
-    data: {
-      userID,
-      recipeID,
-    },
-    include: {
-      recipe: true,
-    },
-  });
-}
 
   async unsaveRecipe(userID: string, recipeID: number) {
     const existing = await this.prisma.savedRecipe.findUnique({
@@ -342,7 +403,7 @@ private readonly include = {
       },
       include: { requester: true, receiver: true },
     });
-    return friendships.map(f =>
+    return friendships.map((f) =>
       f.requesterID === userID ? f.receiver : f.requester,
     );
   }
@@ -373,6 +434,58 @@ private readonly include = {
       },
       data: {
         avatar,
+      },
+    });
+  }
+
+  async savePreferences(userID: string, tagNames: string[]) {
+    // Verify user exists
+    await this.findOne(userID);
+
+    // Find or create tags by name
+    const tags = await Promise.all(
+      tagNames.map(async (tagName) => {
+        return this.prisma.tag.findFirst({
+          where: { name: tagName },
+        });
+      }),
+    );
+
+    // Filter out null tags (tags that don't exist in DB)
+    const existingTags = tags.filter((tag) => tag !== null);
+
+    if (existingTags.length === 0) {
+      throw new NotFoundException('No existing tags found');
+    }
+
+    // Delete existing preferences
+    await this.prisma.userPreference.deleteMany({
+      where: { userID },
+    });
+
+    // Create new preferences
+    const preferences = await this.prisma.userPreference.createMany({
+      data: existingTags.map((tag) => ({
+        userID,
+        tagID: tag.tagID,
+      })),
+    });
+
+    return {
+      userID,
+      preferencesCount: preferences.count,
+      tags: existingTags,
+    };
+  }
+
+  async getPreferences(userID: string) {
+    // Verify user exists
+    await this.findOne(userID);
+
+    return this.prisma.userPreference.findMany({
+      where: { userID },
+      include: {
+        tag: true,
       },
     });
   }

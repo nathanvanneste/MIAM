@@ -9,7 +9,7 @@ import IngredientsList from "@/src/components/ui/Recipe/IngredientsList";
 import PreparationList from "@/src/components/ui/Recipe/PreparationList";
 import EditHeaderSheet from "@/src/components/ui/Recipe/EditHeaderSheet";
 import PrimaryButton from "@/src/components/ui/PrimaryButton";
-import { getRecipeById, updateRecipe } from "@/src/services/recipes.service";
+import { getRecipeById, updateRecipe, getSeedRecipeById, saveSeedRecipe } from "@/src/services/recipes.service";
 import type { RecipeDetail } from "@/src/services/recipes.service";
 import type { RecipeIngredient } from "@/src/types/recipeIngredient";
 import type { IngredientFormData } from "@/src/components/ui/Recipe/IngredientFormSheet";
@@ -41,6 +41,7 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [headerSheetVisible, setHeaderSheetVisible] = useState(false);
+  const [isSeedRecipe, setIsSeedRecipe] = useState(false);
 
   // Track unsaved changes
   const hasUnsavedChanges = useRef(false);
@@ -48,11 +49,21 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
   useEffect(() => {
     const load = async () => {
       try {
-        const data = await getRecipeById(recipeID);
+        // If recipeID is negative, it's a seed recipe
+        let data;
+        if (recipeID < 0) {
+          setIsSeedRecipe(true);
+          // Calculate seed index from negative recipeID (-1 = index 0, -2 = index 1, etc)
+          const seedIndex = Math.abs(recipeID) - 1;
+          data = await getSeedRecipeById(seedIndex);
+        } else {
+          setIsSeedRecipe(false);
+          data = await getRecipeById(recipeID);
+        }
         setRecipe(data);
         setPortions(data.portion);
-      } catch (e) {
-        console.error("Erreur chargement recette", e);
+      } catch {
+        console.error("Erreur chargement recette");
       } finally {
         setLoading(false);
       }
@@ -104,8 +115,8 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
       });
             hasUnsavedChanges.current = false;
       setIsEditing(false);
-    } catch (e) {
-      Alert.alert("Erreur", "Impossible d'enregistrer les modifications.");
+    } catch (_) {
+      Alert.alert("Erreur", "Impossible d'enregistrer les modifications");
     } finally {
       setIsSaving(false);
     }
@@ -167,6 +178,36 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
     markUnsaved();
   };
 
+  const handleSaveSeedRecipe = async () => {
+    if (!recipe || !isSeedRecipe) return;
+    setIsSaving(true);
+    try {
+      const seedIndex = Math.abs(recipeID) - 1;
+      await saveSeedRecipe(seedIndex);
+      Alert.alert(
+        "Succès",
+        "La recette a été enregistrée dans votre collection !",
+        [
+          {
+            text: "Voir mes recettes",
+            onPress: () => {
+              router.push("/(tabs)/profile");
+            },
+          },
+          {
+            text: "Fermer",
+            style: "cancel",
+          },
+        ]
+      );
+    } catch (e) {
+      console.error("Erreur sauvegarde recette seed", e);
+      Alert.alert("Erreur", "Impossible d'enregistrer la recette.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (loading || !recipe) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -180,6 +221,7 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
       <RecipeHeader
         title={recipe.name}
         description={recipe.description}
+        photo={recipe.photo}
         prepTime={formatTime(recipe.prepTime)}
         cookTime={formatTime(recipe.cookTime)}
         onBack={() => router.back()}
@@ -222,6 +264,18 @@ export default function RecipeScreen({ recipeID, onShare }: RecipeScreenProps) {
           <PrimaryButton
             title={isSaving ? "Enregistrement..." : "Enregistrer les modifications"}
             onPress={handleSaveAll}
+            backgroundColor={Colors.primaryButton}
+            textColor={Colors.surface}
+          />
+        </View>
+      )}
+
+      {/* Save seed recipe button — only visible for seed recipes that haven't been saved */}
+      {isSeedRecipe && (
+        <View style={styles.footer}>
+          <PrimaryButton
+            title={isSaving ? "Enregistrement..." : "Enregistrer cette recette"}
+            onPress={handleSaveSeedRecipe}
             backgroundColor={Colors.primaryButton}
             textColor={Colors.surface}
           />

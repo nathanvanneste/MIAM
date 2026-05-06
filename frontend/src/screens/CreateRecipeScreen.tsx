@@ -10,6 +10,7 @@ import { CreateRecipeDTO } from '@/src/types/recipe'
 import PortionCounter from '@/src/components/features/recipe/PortionCounter'
 import IngredientSearch from '@/src/components/features/recipe/IngredientSearch'
 import StepList from '@/src/components/features/recipe/StepList'
+import TagSelector from '@/src/components/features/recipe/TagSelector'
 import { createRecipe } from '@/src/services/recipes.service'
 import { router } from 'expo-router'
 
@@ -32,7 +33,7 @@ export default function CreateRecipeScreen() {
         prepTime: 0,
         cookTime: 0,
         recipeIngredients: [],
-        categories: [],
+        tagIDs: [],
         steps: [],
         description: undefined,
         photoUri: undefined,
@@ -174,11 +175,12 @@ export default function CreateRecipeScreen() {
                         <SectionTitle number="03" title="Étapes" />
                         <StepList onChange={(steps) => setForm({ ...form, steps })} />
 
-                        {/* 04 — Catégories */}
-                        <SectionTitle number="04" title="Catégories" />
-                        <View style={styles.comingSoon}>
-                            <Text style={styles.comingSoonText}>Tags — à venir</Text>
-                        </View>
+                        {/* 04 — Tags */}
+                        <SectionTitle number="04" title="Tags" />
+                        <TagSelector
+                            selectedTagIDs={form.tagIDs || []}
+                            onChange={(tagIDs) => setForm({ ...form, tagIDs })}
+                        />
 
                         {/* 05 — Description */}
                         <SectionTitle number="05" title="Description" />

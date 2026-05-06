@@ -20,9 +20,7 @@ import type { AuthenticatedRequest } from '../auth/types/authenticated-request.t
 @UseGuards(JwtAuthGuard)
 @Controller('shopping-lists')
 export class ShoppingListsController {
-  constructor(
-    private readonly shoppingListsService: ShoppingListsService,
-  ) {}
+  constructor(private readonly shoppingListsService: ShoppingListsService) {}
 
   @Get('me')
   findMine(@Req() req: AuthenticatedRequest) {
@@ -38,9 +36,9 @@ export class ShoppingListsController {
 
   @Get(':listID')
   findOne(
-     @Req() req: AuthenticatedRequest,
-     @Param('listID', ParseIntPipe) listID: number,
-    ) {
+    @Req() req: AuthenticatedRequest,
+    @Param('listID', ParseIntPipe) listID: number,
+  ) {
     return this.shoppingListsService.findOne(req.user.userID, listID);
   }
 

@@ -1,5 +1,5 @@
 // src/components/ui/Recipe/RecipeHeader.tsx
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, Pressable, Image } from "react-native";
 import { ArrowLeft, Share2, Clock, Flame, Pencil, X } from "lucide-react-native";
 import { Colors } from "@/src/constants/colors";
 import { FontSize, FontWeight } from "@/src/constants/typography";
@@ -7,6 +7,7 @@ import { FontSize, FontWeight } from "@/src/constants/typography";
 type RecipeHeaderProps = {
   title: string;
   description?: string | null;
+  photo?: string | null;
   prepTime: string;
   cookTime: string;
   onBack?: () => void;
@@ -19,6 +20,7 @@ type RecipeHeaderProps = {
 export default function RecipeHeader({
   title,
   description,
+  photo,
   prepTime,
   cookTime,
   onBack,
@@ -29,6 +31,14 @@ export default function RecipeHeader({
 }: RecipeHeaderProps) {
   return (
     <View style={[styles.header, isEditing && styles.headerEditing]}>
+      {/* Photo Banner */}
+      {photo && (
+        <Image
+          source={{ uri: photo }}
+          style={styles.photoBanner}
+        />
+      )}
+
       {/* Top row: back + toggle edit/share */}
       <View style={styles.headerTop}>
         <Pressable onPress={onBack} style={styles.iconButton} hitSlop={8}>
@@ -91,6 +101,14 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 12,
     backgroundColor: Colors.background,
+  },
+
+  photoBanner: {
+    width: '100%',
+    height: 240,
+    borderRadius: 12,
+    marginBottom: 16,
+    backgroundColor: Colors.cardLight,
   },
 
   headerEditing: {

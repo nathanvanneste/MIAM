@@ -6,6 +6,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { SeedRecipesService } from '../data/seed-recipes.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { UpdateRecipeDto } from './dto/update-recipe.dto';
 import { CreateReviewDto } from './dto/create-review.dto';
@@ -18,10 +19,12 @@ import { CreateRecipeCommentDto } from './dto/create-recipe-comment.dto';
 import { UpdateRecipeCommentDto } from './dto/update-recipe-comment.dto';
 import { UpsertCommentReactionDto } from './dto/upsert-comment-reaction.dto';
 
-
 @Injectable()
 export class RecipesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly seedRecipes: SeedRecipesService,
+  ) {}
 
   private readonly recipeInclude = {
     creator: true,
@@ -110,8 +113,7 @@ export class RecipesService {
   }
 
   async create(userID: string, createRecipeDto: CreateRecipeDto) {
-    const { steps, ingredients, tagIDs, ...recipeData } =
-      createRecipeDto;
+    const { steps, ingredients, tagIDs, ...recipeData } = createRecipeDto;
 
     return this.prisma.recipe.create({
       data: {
@@ -185,7 +187,7 @@ export class RecipesService {
     recipeID: number,
     updateRecipeDto: UpdateRecipeDto,
   ) {
-  await this.assertRecipeOwner(userID, recipeID);
+    await this.assertRecipeOwner(userID, recipeID);
 
     const { steps, ingredients, tagIDs, ...recipeData } = updateRecipeDto;
 
@@ -242,7 +244,11 @@ export class RecipesService {
     });
   }
 
-  async addStep(userID: string, recipeID: number, createStepDto: CreateStepDto) {
+  async addStep(
+    userID: string,
+    recipeID: number,
+    createStepDto: CreateStepDto,
+  ) {
     await this.assertRecipeOwner(userID, recipeID);
 
     return this.prisma.step.create({
@@ -254,7 +260,11 @@ export class RecipesService {
     });
   }
 
-  async updateStep(userID: string, stepID: number, updateStepDto: UpdateStepDto) {
+  async updateStep(
+    userID: string,
+    stepID: number,
+    updateStepDto: UpdateStepDto,
+  ) {
     await this.assertStepOwner(userID, stepID);
 
     return this.prisma.step.update({
@@ -305,8 +315,11 @@ export class RecipesService {
     });
   }
 
-  async removeIngredient(userID: string, recipeID: number, ingredientID: number) {
-
+  async removeIngredient(
+    userID: string,
+    recipeID: number,
+    ingredientID: number,
+  ) {
     await this.assertRecipeOwner(userID, recipeID);
 
     const existingIngredient = await this.prisma.recipeIngredient.findUnique({
@@ -332,7 +345,11 @@ export class RecipesService {
     });
   }
 
-  async addTag(userID: string, recipeID: number, addRecipeTagDto: AddRecipeTagDto) {
+  async addTag(
+    userID: string,
+    recipeID: number,
+    addRecipeTagDto: AddRecipeTagDto,
+  ) {
     await this.assertRecipeOwner(userID, recipeID);
 
     const existingTag = await this.prisma.recipeTag.findUnique({
@@ -361,7 +378,7 @@ export class RecipesService {
 
   async removeTag(userID: string, recipeID: number, tagID: number) {
     await this.assertRecipeOwner(userID, recipeID);
-    
+
     const existingTag = await this.prisma.recipeTag.findUnique({
       where: {
         recipeID_tagID: {
@@ -425,7 +442,11 @@ export class RecipesService {
     });
   }
 
-  async updateReview(userID: string, reviewID: number, updateReviewDto: UpdateReviewDto) {
+  async updateReview(
+    userID: string,
+    reviewID: number,
+    updateReviewDto: UpdateReviewDto,
+  ) {
     const review = await this.prisma.review.findUnique({
       where: { reviewID },
       select: {
@@ -517,7 +538,7 @@ export class RecipesService {
       select: { requesterID: true, receiverID: true },
     });
 
-    const friendIDs = friendships.map(f =>
+    const friendIDs = friendships.map((f) =>
       f.requesterID === userID ? f.receiverID : f.requesterID,
     );
 
@@ -534,6 +555,226 @@ export class RecipesService {
     const random = all.slice(RECENT).sort(() => Math.random() - 0.5);
 
     return { recent, random };
+  }
+
+  async getRecommendations(
+    userID: string,
+  ): Promise<{ recommendations: any[]; preferencesCount: number }> {
+    // Get user preferences
+    const preferences = await this.prisma.userPreference.findMany({
+      where: { userID },
+      include: { tag: true },
+    });
+
+    const tagNames = preferences.map((p) => p.tag.name);
+
+    // Get all seed recipes with their indices
+    const allSeeds = this.seedRecipes.getAllRecipes();
+    const tagsSet = new Set(tagNames.map((t) => t.toLowerCase()));
+
+    // Filter recipes while keeping original index and match count
+    const recommendedWithIndex = allSeeds
+      .map((recipe, index) => {
+        const matchCount = recipe.tags.filter((tag) =>
+          tagsSet.has(tag.toLowerCase()),
+        ).length;
+        return { recipe, index, matchCount };
+      })
+      .filter(({ matchCount }) => matchCount > 0)
+      // Sort by number of matching tags (descending)
+      .sort((a, b) => b.matchCount - a.matchCount);
+
+    // Map to feed-shaped recipes with seedIndex
+    const mapped = recommendedWithIndex.map(({ recipe, index }) => {
+      const ingredients = (recipe.ingredients || []).map((ing, idx) => ({
+        ingredientID: idx + 1,
+        unitID: null,
+        ingredient: { name: ing.ingredientName },
+        unit: null,
+        quantity: ing.quantity,
+      }));
+
+      const steps = (recipe.steps || []).map((s, idx) => ({
+        stepID: idx + 1,
+        order: s.order ?? idx + 1,
+        text: s.text,
+      }));
+
+      return {
+        recipeID: -1 - index, // -1, -2, -3, etc as unique negative IDs
+        seedIndex: index, // Original index in JSON
+        name: recipe.name,
+        createdAt: new Date().toISOString(),
+        prepTime: recipe.prepTime ?? 0,
+        cookTime: recipe.cookTime ?? 0,
+        photo: recipe.photo ?? null,
+        portion: recipe.portion ?? 1,
+        description: recipe.description ?? null,
+        ingredients,
+        steps,
+        creator: {
+          userID: 'seed',
+          pseudo: 'Miam',
+          firstName: 'Miam',
+          lastName: '',
+          avatar: null,
+        },
+      };
+    });
+
+    return {
+      recommendations: mapped,
+      preferencesCount: preferences.length,
+    };
+  }
+
+  findSeedRecipe(seedIndex: number) {
+    const allSeeds = this.seedRecipes.getAllRecipes();
+    const recipe = allSeeds[seedIndex];
+
+    if (!recipe) {
+      throw new NotFoundException(
+        `Seed recipe at index ${seedIndex} not found`,
+      );
+    }
+
+    const ingredients = (recipe.ingredients || []).map((ing, idx) => ({
+      ingredientID: idx + 1,
+      unitID: null,
+      ingredient: { name: ing.ingredientName },
+      unit: null,
+      quantity: ing.quantity,
+    }));
+
+    const steps = (recipe.steps || []).map((s, idx) => ({
+      stepID: idx + 1,
+      order: s.order ?? idx + 1,
+      text: s.text,
+    }));
+
+    return {
+      recipeID: seedIndex,
+      name: recipe.name,
+      createdAt: new Date().toISOString(),
+      prepTime: recipe.prepTime ?? 0,
+      cookTime: recipe.cookTime ?? 0,
+      photo: recipe.photo ?? null,
+      portion: recipe.portion ?? 1,
+      description: recipe.description ?? null,
+      price: recipe.price ?? null,
+      nutritionalScore: recipe.nutritionalScore ?? null,
+      ingredients,
+      steps,
+      creator: {
+        userID: 'seed',
+        pseudo: 'Miam',
+        firstName: 'Miam',
+        lastName: '',
+        avatar: null,
+      },
+      tags: (recipe.tags || []).map((name) => ({ tag: { name } })),
+      reviews: [],
+      savedBy: [],
+      groups: [],
+    };
+  }
+
+  async saveSeedRecipe(userID: string, seedIndex: number) {
+    const allSeeds = this.seedRecipes.getAllRecipes();
+    const seedRecipe = allSeeds[seedIndex];
+
+    if (!seedRecipe) {
+      throw new NotFoundException(
+        `Seed recipe at index ${seedIndex} not found`,
+      );
+    }
+
+    // Get or create ingredients from the seed recipe
+    const ingredientData = await Promise.all(
+      (seedRecipe.ingredients || []).map(async (ing) => {
+        // Try to find existing ingredient by name
+        let ingredient = await this.prisma.ingredient.findFirst({
+          where: {
+            name: {
+              equals: ing.ingredientName,
+              mode: 'insensitive',
+            },
+          },
+        });
+
+        // If not found, create it with default values
+        if (!ingredient) {
+          ingredient = await this.prisma.ingredient.create({
+            data: {
+              name: ing.ingredientName,
+              category: 'other',
+              unitDefault: 'g',
+              calories: 0,
+            },
+          });
+        }
+
+        return ingredient;
+      }),
+    );
+
+    // Get tags by name
+    const tags = await this.prisma.tag.findMany({
+      where: {
+        name: {
+          in: seedRecipe.tags || [],
+          mode: 'insensitive',
+        },
+      },
+    });
+
+    // Create the recipe in DB
+    const recipe = await this.prisma.recipe.create({
+      data: {
+        name: seedRecipe.name,
+        description: seedRecipe.description,
+        portion: seedRecipe.portion,
+        prepTime: seedRecipe.prepTime,
+        cookTime: seedRecipe.cookTime,
+        photo: seedRecipe.photo,
+        price: seedRecipe.price,
+        nutritionalScore: seedRecipe.nutritionalScore,
+
+        creator: {
+          connect: { userID },
+        },
+
+        steps: {
+          create: (seedRecipe.steps || []).map((step) => ({
+            text: step.text,
+            order: step.order,
+          })),
+        },
+
+        ingredients: {
+          create: (seedRecipe.ingredients || []).map((seedIng, idx) => ({
+            quantity: seedIng.quantity,
+            ingredient: {
+              connect: { ingredientID: ingredientData[idx].ingredientID },
+            },
+          })),
+        },
+
+        tags:
+          tags.length > 0
+            ? {
+                create: tags.map((tag) => ({
+                  tag: {
+                    connect: { tagID: tag.tagID },
+                  },
+                })),
+              }
+            : undefined,
+      },
+      include: this.recipeInclude,
+    });
+
+    return recipe;
   }
 
   async findComments(recipeID: number) {
@@ -771,4 +1012,3 @@ export class RecipesService {
     });
   }
 }
-

@@ -3,7 +3,7 @@ import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl, us
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Users } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing } from '@/src/constants'
-import { FeedRecipe, getFeed } from '@/src/services/recipes.service'
+import { FeedRecipe, getFeed, getRecommendations } from '@/src/services/recipes.service'
 import RecipeCard from '@/src/components/ui/Recipe/RecipeCard'
 
 const H_PAD = Spacing.md
@@ -12,6 +12,7 @@ const COL_GAP = Spacing.sm
 type FeedItem =
     | { type: 'header'; title: string }
     | { type: 'pair'; items: FeedRecipe[] }
+    | { type: 'recipe'; recipe: FeedRecipe }
     | { type: 'empty'; message: string }
 
 const toPairs = (recipes: FeedRecipe[]): FeedItem[] =>
@@ -31,8 +32,11 @@ export default function FeedScreen() {
     const load = useCallback(async () => {
         try {
             const { recent, random } = await getFeed()
+            const recRes = await getRecommendations().catch(() => ({ recommendations: [], preferencesCount: 0 }))
 
-            if (recent.length === 0 && random.length === 0) {
+            const recs = recRes.recommendations || []
+
+            if (recent.length === 0 && recs.length === 0 && random.length === 0) {
                 setItems([{ type: 'empty', message: 'Ajoute des amis pour voir leurs recettes ici.' }])
                 return
             }
@@ -40,12 +44,18 @@ export default function FeedScreen() {
             const built: FeedItem[] = []
             if (recent.length > 0) {
                 built.push({ type: 'header', title: 'Nouvelles recettes' })
-                built.push(...toPairs(recent))
+                recent.forEach((r: any) => built.push({ type: 'recipe', recipe: r }))
             }
-            if (random.length > 0) {
+
+            // Recommended recipes (from seed) have priority in the Discover section
+            if (recs.length > 0) {
+                built.push({ type: 'header', title: 'Découvrir' })
+                recs.forEach((r: any) => built.push({ type: 'recipe', recipe: r }))
+            } else if (random.length > 0) {
                 built.push({ type: 'header', title: 'Découvrir' })
                 built.push(...toPairs(random))
             }
+
             setItems(built)
         } catch {
             setItems([{ type: 'empty', message: 'Impossible de charger le fil.' }])
@@ -70,7 +80,7 @@ export default function FeedScreen() {
                 <FlatList
                     data={items}
                     keyExtractor={(item, i) =>
-                        item.type === 'pair' ? `pair-${item.items[0].recipeID}` : `${item.type}-${i}`
+                        item.type === 'pair' ? `pair-${item.items[0].recipeID}` : item.type === 'recipe' ? `recipe-${item.recipe.recipeID}` : `${item.type}-${i}`
                     }
                     contentContainerStyle={styles.list}
                     showsVerticalScrollIndicator={false}
@@ -87,9 +97,18 @@ export default function FeedScreen() {
                                     <View style={styles.emptyIcon}>
                                         <Users size={36} color={Colors.primaryMuted} />
                                     </View>
-                                    <Text style={styles.emptyTitle}>Rien à voir pour l'instant</Text>
+                                    <Text style={styles.emptyTitle}>Rien à voir pour l&apos;instant</Text>
                                     <Text style={styles.emptyText}>{item.message}</Text>
                                 </View>
+                            )
+                        }
+                        if (item.type === 'recipe') {
+                            return (
+                                <RecipeCard
+                                    recipe={item.recipe}
+                                    cardWidth={cardWidth}
+                                    creator={item.recipe.creator}
+                                />
                             )
                         }
                         return (

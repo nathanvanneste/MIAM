@@ -50,9 +50,7 @@ export class GroupsService {
     const isMember = group.members.some((member) => member.userID === userID);
 
     if (!isMember) {
-      throw new ForbiddenException(
-        "Vous n'avez pas accès à ce groupe.",
-      );
+      throw new ForbiddenException("Vous n'avez pas accès à ce groupe.");
     }
 
     return group;
@@ -109,14 +107,18 @@ export class GroupsService {
     return this.assertGroupMember(userID, groupID);
   }
 
-  async update(userID: string,  groupID: number, updateGroupDto: UpdateGroupDto) {
+  async update(
+    userID: string,
+    groupID: number,
+    updateGroupDto: UpdateGroupDto,
+  ) {
     await this.assertGroupMember(userID, groupID);
 
-  return this.prisma.groups.update({
-    where: { groupID },
-    data: updateGroupDto,
-    include: this.include,
-  });
+    return this.prisma.groups.update({
+      where: { groupID },
+      data: updateGroupDto,
+      include: this.include,
+    });
   }
 
   /*
@@ -129,7 +131,11 @@ export class GroupsService {
   }
   */
 
-  async addMember(userID: string, groupID: number, addGroupMemberDto: AddGroupMemberDto) {
+  async addMember(
+    userID: string,
+    groupID: number,
+    addGroupMemberDto: AddGroupMemberDto,
+  ) {
     await this.assertGroupMember(userID, groupID);
 
     const existingMember = await this.prisma.groupMember.findUnique({
@@ -181,7 +187,11 @@ export class GroupsService {
   }
   */
 
-  async addRecipe(userID: string, groupID: number, addGroupRecipeDto: AddGroupRecipeDto) {
+  async addRecipe(
+    userID: string,
+    groupID: number,
+    addGroupRecipeDto: AddGroupRecipeDto,
+  ) {
     await this.assertGroupMember(userID, groupID);
 
     const existingRecipe = await this.prisma.groupRecipe.findUnique({
@@ -255,7 +265,7 @@ export class GroupsService {
 
     if (memberCount <= 1) {
       throw new ForbiddenException(
-        "Vous ne pouvez pas quitter ce groupe car vous êtes le dernier membre.",
+        'Vous ne pouvez pas quitter ce groupe car vous êtes le dernier membre.',
       );
     }
 

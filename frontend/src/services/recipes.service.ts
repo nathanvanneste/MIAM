@@ -1,7 +1,6 @@
 import { apiFetch } from '@/src/config/api'
 import { supabase } from '@/src/config/supabase';
 import { CreateRecipeDTO, Recipe } from '../types/recipe'
-import { Ingredient } from '../types/ingredient'
 import { uploadRecipePhoto } from './storage.service';
 
 // RecipeDetail = Recipe (backend returns the same shape for all recipe endpoints)
@@ -29,8 +28,20 @@ export const getAllRecipes = async (): Promise<RecipeDetail[]> => {
   return await apiFetch('/recipes', { method: 'GET' });
 };
 
+export const getRecommendations = async (): Promise<{ recommendations: RecipeDetail[]; preferencesCount: number }> => {
+  return await apiFetch('/recipes/recommendations', { method: 'GET' });
+};
+
 export const getRecipeById = async (recipeID: number): Promise<RecipeDetail> => {
   return await apiFetch(`/recipes/${recipeID}`, { method: 'GET' });
+};
+
+export const getSeedRecipeById = async (seedIndex: number): Promise<RecipeDetail> => {
+  return await apiFetch(`/recipes/seed/${seedIndex}`, { method: 'GET' });
+};
+
+export const saveSeedRecipe = async (seedIndex: number): Promise<RecipeDetail> => {
+  return await apiFetch(`/recipes/seed/${seedIndex}/save`, { method: 'POST' });
 };
 
 export const createRecipe = async (form: CreateRecipeDTO): Promise<Recipe> => {
@@ -44,6 +55,7 @@ export const createRecipe = async (form: CreateRecipeDTO): Promise<Recipe> => {
       description: form.description,
       ingredients: form.recipeIngredients,
       steps: form.steps,
+      tagIDs: form.tagIDs || [],
     }),
   });
 
