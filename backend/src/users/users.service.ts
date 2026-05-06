@@ -4,7 +4,6 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
-  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 //import { CreateUserDto } from './dto/create-user.dto';
@@ -12,7 +11,6 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { CreateFriendshipDto } from './dto/create-friendship.dto';
 import { UpdateFriendshipStatusDto } from './dto/update-friendship-status.dto';
 import { CreateMyProfileDto } from './dto/create-my-profile.dto';
-import { createClient } from '@supabase/supabase-js';
 
 type AuthUser = {
   userID: string;
@@ -53,24 +51,31 @@ private readonly include = {
       throw new BadRequestException("Impossible de créer le profil : l'email est absent du token.");
     }
 
-    return this.prisma.user.create({
-      data: {
-        userID: authUser.userID,
-        email: authUser.email,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        pseudo: dto.pseudo,
-        avatar: dto.avatar,
-        shoppingList: {
-          create: {
-            name: `Liste de ${dto.pseudo}`,
+    try {
+      return await this.prisma.user.create({
+        data: {
+          userID: authUser.userID,
+          email: authUser.email,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          pseudo: dto.pseudo,
+          avatar: dto.avatar,
+          shoppingList: {
+            create: {
+              name: `Liste de ${dto.pseudo}`,
+            },
           },
         },
-      },
-      include: {
-        shoppingList: true,
-      },
-    });
+        include: {
+          shoppingList: true,
+        },
+      });
+    } catch (e: any) {
+      if (e.code === 'P2002') {
+        throw new ConflictException('Ce pseudo est déjà utilisé');
+      }
+      throw e;
+    }
   }
 
   async findAll() {
@@ -119,16 +124,23 @@ private readonly include = {
   }
 
   async remove(userID: string) {
-    await this.findOne(userID);
+    // Suppression DB — silencieuse si le user n'existe plus (tentative précédente partielle)
+    await this.prisma.user.deleteMany({ where: { userID } });
 
-    await this.prisma.user.delete({ where: { userID } });
-
-    const supabaseAdmin = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    // Suppression Supabase Auth via REST direct (évite le client JS qui init WebSocket)
+    const res = await fetch(
+      `${process.env.SUPABASE_URL}/auth/v1/admin/users/${userID}`,
+      {
+        method: 'DELETE',
+        headers: {
+          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+        },
+      },
     );
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(userID);
-    if (error) throw new InternalServerErrorException('Erreur suppression auth : ' + error.message);
+    if (!res.ok && res.status !== 404) {
+      throw new Error(`Supabase auth delete failed: ${res.status}`);
+    }
   }
 
   async sendFriendRequest(requesterID: string, dto: CreateFriendshipDto) {    
