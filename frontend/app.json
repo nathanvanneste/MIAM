@@ -12,7 +12,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.miam.app",
+      //  "package": "com.miam.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -44,12 +44,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "d1d3d0e2-8742-47b2-a29d-7b661af1b9c3"
-      }
+      //} ,
+      //"extra": {
+      //  "router": {},
+      //  "eas": {
+      //    "projectId": "d1d3d0e2-8742-47b2-a29d-7b661af1b9c3"
+      //  }
     }
   }
 }

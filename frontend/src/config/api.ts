@@ -23,5 +23,6 @@ export const apiFetch = async (path: string, options?: RequestInit) => {
     throw new Error(error.message || 'Erreur réseau')
   }
 
-  return response.json()
+  const text = await response.text()
+  return text.length > 0 ? JSON.parse(text) : undefined
 }
