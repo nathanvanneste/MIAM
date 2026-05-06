@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native'
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist'
 import { X, Plus, GripVertical } from 'lucide-react-native'
@@ -9,10 +9,11 @@ type DraggableStep = CreateStepDTO & { key: string }
 
 
 type Props = {
+    initialSteps?: CreateStepDTO[]
     onChange: (steps: CreateStepDTO[]) => void
 }
 
-export default function StepList({ onChange }: Props) {
+export default function StepList({ initialSteps = [], onChange }: Props) {
     const [steps, setSteps] = useState<DraggableStep[]>([])
 
     const notify = (newSteps: DraggableStep[]) => {
@@ -25,6 +26,17 @@ export default function StepList({ onChange }: Props) {
         setSteps(newSteps)
         notify(newSteps)
     }
+
+    useEffect(() => {
+        if (initialSteps.length > 0) {
+            const normalized = initialSteps.map((step, index) => ({
+                ...step,
+                order: step.order || index + 1,
+                key: `initial-step-${index}`,
+            }))
+            setSteps(normalized)
+        }
+    }, [initialSteps])
 
     const handleChange = (key: string, text: string) => {
         const newSteps = steps.map(s => s.key === key ? { ...s, text } : s)

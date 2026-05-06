@@ -12,6 +12,7 @@ export default function RootLayout() {
         <Stack.Screen name="settings" />
         <Stack.Screen name="friends" />
         <Stack.Screen name="invitations" />
+        <Stack.Screen name="voice-chat" />
         <Stack.Screen name="recipe/[recipeID]" />
         <Stack.Screen name="group/[groupID]" />
       </Stack>

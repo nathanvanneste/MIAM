@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native'
 import { X, Plus } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
@@ -10,10 +10,12 @@ import { CreateRecipeIngredientDTO } from '@/src/types/recipeIngredient'
 import UnitDropdown from '@/src/components/ui/UnitDropdown'
 
 type SelectedIngredient = {
-    ingredient: Ingredient
+    ingredientID: number
+    name: string
     quantity: number
     unitID: number
     unitType: string
+    ingredient?: Ingredient
 }
 
 type StagedIngredient = {
@@ -23,18 +25,63 @@ type StagedIngredient = {
 }
 
 type Props = {
+    initialIngredients?: (CreateRecipeIngredientDTO & { name?: string; unitType?: string })[]
     onChange: (ingredients: CreateRecipeIngredientDTO[]) => void
 }
 
-export default function IngredientSearch({ onChange }: Props) {
+export default function IngredientSearch({ initialIngredients = [], onChange }: Props) {
     const [search, setSearch] = useState('')
     const [suggestions, setSuggestions] = useState<Ingredient[]>([])
     const [staged, setStaged] = useState<StagedIngredient | null>(null)
     const [selected, setSelected] = useState<SelectedIngredient[]>([])
+    const hasInitializedRef = useRef(false)
+
+    const normalizeUnitType = useCallback((unit?: string): string => {
+        if (!unit) return 'unité'
+        const cleaned = unit.trim().toLowerCase().replace(/\s+/g, ' ')
+        const normalizedMap: Record<string, string> = {
+            'c. à c.': 'c. à c.',
+            'c.à c.': 'c. à c.',
+            'c. a c.': 'c. à c.',
+            'cuillère à café': 'c. à c.',
+            'c. à s.': 'c. à s.',
+            'c.à s.': 'c. à s.',
+            'cuillère à soupe': 'c. à s.',
+            'ml': 'mL',
+            'millilitre': 'mL',
+            'millilitres': 'mL',
+            'cl': 'cL',
+            'decilitre': 'cL',
+            'litre': 'L',
+            'litres': 'L',
+            'gramme': 'g',
+            'grammes': 'g',
+            'kilogramme': 'kg',
+            'kilogrammes': 'kg',
+            'milligramme': 'mg',
+            'milligrammes': 'mg',
+            'piece': 'pièce',
+            'tranches': 'tranches',
+            'tranche': 'tranche',
+            'gousse': 'gousse',
+            'branche': 'branche',
+            'feuille': 'feuille',
+            'pincée': 'pincée',
+            'poignée': 'poignée',
+            'sachet': 'sachet',
+            'bouquet': 'bouquet',
+        }
+        return normalizedMap[cleaned] || UNITS.find(u => u.type.toLowerCase() === cleaned)?.type || 'unité'
+    }, [])
+
+    const getUnitID = useCallback((unitType?: string): number => {
+        const type = normalizeUnitType(unitType)
+        return UNITS.find((u) => u.type === type)?.unitID || 3
+    }, [normalizeUnitType])
 
     const notify = (items: SelectedIngredient[]) => {
         onChange(items.map(s => ({
-            ingredientID: s.ingredient.ingredientID,
+            ingredientID: s.ingredientID,
             quantity: s.quantity,
             unitID: s.unitID,
         })))
@@ -46,7 +93,7 @@ export default function IngredientSearch({ onChange }: Props) {
         try {
             const results = await searchIngredients(text)
             const q = normalize(text)
-            const filtered = results.filter(i => !selected.find(s => s.ingredient.ingredientID === i.ingredientID))
+            const filtered = results.filter(i => !selected.find(s => s.ingredientID === i.ingredientID))
             filtered.sort((a, b) => {
                 const aStarts = normalize(a.name).startsWith(q)
                 const bStarts = normalize(b.name).startsWith(q)
@@ -75,6 +122,8 @@ export default function IngredientSearch({ onChange }: Props) {
         const newSelected: SelectedIngredient[] = [
             ...selected,
             {
+                ingredientID: staged.ingredient.ingredientID,
+                name: staged.ingredient.name,
                 ingredient: staged.ingredient,
                 quantity: parseFloat(staged.quantity) || 1,
                 unitID: unit.unitID,
@@ -87,14 +136,14 @@ export default function IngredientSearch({ onChange }: Props) {
     }
 
     const handleRemove = (id: number) => {
-        const newSelected = selected.filter(s => s.ingredient.ingredientID !== id)
+        const newSelected = selected.filter(s => s.ingredientID !== id)
         setSelected(newSelected)
         notify(newSelected)
     }
 
     const handleQuantityChange = (id: number, text: string) => {
         const newSelected = selected.map(s =>
-            s.ingredient.ingredientID === id ? { ...s, quantity: parseFloat(text) || 0 } : s
+            s.ingredientID === id ? { ...s, quantity: parseFloat(text) || 0 } : s
         )
         setSelected(newSelected)
         notify(newSelected)
@@ -102,11 +151,26 @@ export default function IngredientSearch({ onChange }: Props) {
 
     const handleUnitSelect = (id: number, unit: { unitID: number; type: string }) => {
         const newSelected = selected.map(s =>
-            s.ingredient.ingredientID === id ? { ...s, unitID: unit.unitID, unitType: unit.type } : s
+            s.ingredientID === id ? { ...s, unitID: unit.unitID, unitType: unit.type } : s
         )
         setSelected(newSelected)
         notify(newSelected)
     }
+
+    useEffect(() => {
+        if (hasInitializedRef.current) return
+        if (initialIngredients.length > 0) {
+            const preloaded = initialIngredients.map((item, index) => ({
+                ingredientID: item.ingredientID,
+                name: item.name || `Ingrédient ${index + 1}`,
+                quantity: item.quantity || 1,
+                unitType: normalizeUnitType(item.unitType || ''),
+                unitID: getUnitID(item.unitType),
+            }))
+            setSelected(preloaded)
+            hasInitializedRef.current = true
+        }
+    }, [initialIngredients, getUnitID, normalizeUnitType])
 
     return (
         <View>
@@ -174,16 +238,16 @@ export default function IngredientSearch({ onChange }: Props) {
                 </View>
             )}
 
-            {selected.map(item => {
-                const id = item.ingredient.ingredientID
+            {selected.map((item, index) => {
+                const id = item.ingredientID
                 return (
-                    <View key={id} style={styles.selectedItem}>
+                    <View key={`${id}-${index}`} style={styles.selectedItem}>
                         <View style={styles.itemRow}>
-                            <Text style={styles.ingredientName} numberOfLines={1}>{item.ingredient.name}</Text>
+                            <Text style={styles.ingredientName} numberOfLines={1}>{item.name}</Text>
                             <View style={styles.controls}>
                                 <TextInput
                                     style={styles.quantityInput}
-                                    value={String(item.quantity)}
+                                    value={item.quantity === 0 ? '' : String(item.quantity)}
                                     keyboardType="numeric"
                                     onChangeText={(text) => handleQuantityChange(id, text)}
                                     onBlur={() => handleQuantityChange(id, String(Math.min(9999, Math.max(0, item.quantity))))}
