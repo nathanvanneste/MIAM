@@ -572,7 +572,10 @@ export class RecipesService {
     const allSeeds = this.seedRecipes.getAllRecipes();
     const tagsSet = new Set(tagNames.map((t) => t.toLowerCase()));
 
-    // Filter recipes while keeping original index and match count
+    const allDbTags = await this.prisma.tag.findMany();
+    const tagNameToID = new Map(allDbTags.map((t) => [t.name.toLowerCase(), t.tagID]));
+
+    // Score all recipes by preference match, sort best first (no filtering out non-matching)
     const recommendedWithIndex = allSeeds
       .map((recipe, index) => {
         const matchCount = recipe.tags.filter((tag) =>
@@ -580,8 +583,6 @@ export class RecipesService {
         ).length;
         return { recipe, index, matchCount };
       })
-      .filter(({ matchCount }) => matchCount > 0)
-      // Sort by number of matching tags (descending)
       .sort((a, b) => b.matchCount - a.matchCount);
 
     // Map to feed-shaped recipes with seedIndex
@@ -612,6 +613,9 @@ export class RecipesService {
         description: recipe.description ?? null,
         ingredients,
         steps,
+        tags: (recipe.tags || []).map((name) => ({
+          tag: { tagID: tagNameToID.get(name.toLowerCase()) ?? null, name },
+        })),
         creator: {
           userID: 'seed',
           pseudo: 'Miam',

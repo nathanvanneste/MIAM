@@ -35,6 +35,7 @@ export default function IngredientSearch({ initialIngredients = [], onChange }: 
     const [staged, setStaged] = useState<StagedIngredient | null>(null)
     const [selected, setSelected] = useState<SelectedIngredient[]>([])
     const hasInitializedRef = useRef(false)
+    const searchTokenRef = useRef(0)
 
     const normalizeUnitType = useCallback((unit?: string): string => {
         if (!unit) return 'unité'
@@ -90,18 +91,24 @@ export default function IngredientSearch({ initialIngredients = [], onChange }: 
     const handleSearch = async (text: string) => {
         setSearch(text)
         if (text.length < 1) { setSuggestions([]); return }
+        const token = ++searchTokenRef.current
         try {
             const results = await searchIngredients(text)
+            if (token !== searchTokenRef.current) return
             const q = normalize(text)
             const filtered = results.filter(i => !selected.find(s => s.ingredientID === i.ingredientID))
             filtered.sort((a, b) => {
-                const aStarts = normalize(a.name).startsWith(q)
-                const bStarts = normalize(b.name).startsWith(q)
-                return aStarts === bStarts ? 0 : aStarts ? -1 : 1
+                const aN = normalize(a.name)
+                const bN = normalize(b.name)
+                const aStarts = aN.startsWith(q)
+                const bStarts = bN.startsWith(q)
+                if (aStarts !== bStarts) return aStarts ? -1 : 1
+                if (aStarts) return a.name.length - b.name.length
+                return 0
             })
             setSuggestions(filtered)
         } catch {
-            setSuggestions([])
+            if (token === searchTokenRef.current) setSuggestions([])
         }
     }
 
@@ -145,6 +152,16 @@ export default function IngredientSearch({ initialIngredients = [], onChange }: 
         const newSelected = selected.map(s =>
             s.ingredientID === id ? { ...s, quantity: parseFloat(text) || 0 } : s
         )
+        setSelected(newSelected)
+        notify(newSelected)
+    }
+
+    const handleQuantityStep = (id: number, delta: number) => {
+        const newSelected = selected.map(s => {
+            if (s.ingredientID !== id) return s
+            const next = Math.min(9999, Math.max(0.25, parseFloat((s.quantity + delta).toFixed(2))))
+            return { ...s, quantity: next }
+        })
         setSelected(newSelected)
         notify(newSelected)
     }
@@ -217,8 +234,9 @@ export default function IngredientSearch({ initialIngredients = [], onChange }: 
                                 return { ...s, quantity: String(v) }
                             })}
                             selectTextOnFocus
-                            maxLength={7}
+                            maxLength={6}
                             multiline={false}
+                            scrollEnabled={false}
                         />
                         <UnitDropdown
                             value={UNITS[staged.unitIndex].type}
@@ -245,16 +263,25 @@ export default function IngredientSearch({ initialIngredients = [], onChange }: 
                         <View style={styles.itemRow}>
                             <Text style={styles.ingredientName} numberOfLines={1}>{item.name}</Text>
                             <View style={styles.controls}>
-                                <TextInput
-                                    style={styles.quantityInput}
-                                    value={item.quantity === 0 ? '' : String(item.quantity)}
-                                    keyboardType="numeric"
-                                    onChangeText={(text) => handleQuantityChange(id, text)}
-                                    onBlur={() => handleQuantityChange(id, String(Math.min(9999, Math.max(0, item.quantity))))}
-                                    selectTextOnFocus
-                                    maxLength={7}
-                                    multiline={false}
-                                />
+                                <View style={styles.stepper}>
+                                    <TouchableOpacity
+                                        onPress={() => handleQuantityStep(id, -0.25)}
+                                        hitSlop={8}
+                                        style={styles.stepBtn}
+                                    >
+                                        <Text style={styles.stepBtnText}>−</Text>
+                                    </TouchableOpacity>
+                                    <Text style={styles.stepValue}>
+                                        {item.quantity % 1 === 0 ? String(item.quantity) : item.quantity.toFixed(2).replace(/\.?0+$/, '')}
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={() => handleQuantityStep(id, 0.25)}
+                                        hitSlop={8}
+                                        style={styles.stepBtn}
+                                    >
+                                        <Text style={styles.stepBtnText}>+</Text>
+                                    </TouchableOpacity>
+                                </View>
                                 <UnitDropdown
                                     value={item.unitType}
                                     selectedUnitID={item.unitID}
@@ -331,14 +358,14 @@ const styles = StyleSheet.create({
         color: Colors.textPrimary,
     },
     qtyInput: {
-        width: 52,
+        width: 64,
         height: ComponentSize.inputHeight,
         backgroundColor: Colors.background,
         borderRadius: BorderRadius.sm,
         borderWidth: 1,
         borderColor: Colors.border,
         textAlign: 'center',
-        fontSize: FontSize.md,
+        fontSize: FontSize.sm,
         color: Colors.textPrimary,
     },
     addButton: {
@@ -375,16 +402,30 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: Spacing.sm,
     },
-    quantityInput: {
-        width: 52,
-        height: 36,
+    stepper: {
+        flexDirection: 'row',
+        alignItems: 'center',
         backgroundColor: Colors.background,
         borderRadius: BorderRadius.sm,
         borderWidth: 1,
         borderColor: Colors.border,
-        textAlign: 'center',
+        overflow: 'hidden',
+    },
+    stepBtn: {
+        paddingHorizontal: 8,
+        paddingVertical: 6,
+    },
+    stepBtnText: {
         fontSize: FontSize.md,
+        color: Colors.primaryLight,
+        fontWeight: FontWeight.semibold,
+    },
+    stepValue: {
+        minWidth: 32,
+        textAlign: 'center',
+        fontSize: FontSize.sm,
         color: Colors.textPrimary,
+        fontWeight: FontWeight.medium,
     },
     unitButton: {
         flexDirection: 'row',

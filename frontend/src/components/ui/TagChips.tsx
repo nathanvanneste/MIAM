@@ -1,4 +1,4 @@
-import { ScrollView, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '@/src/constants'
 import { Tag } from '@/src/types/recipe'
 
@@ -9,31 +9,42 @@ type Props = {
     horizontal?: boolean
 }
 
+const Chips = ({ tags, selectedIDs, onToggle }: Omit<Props, 'horizontal'>) =>
+    <>
+        {tags.map(tag => {
+            const selected = selectedIDs.has(tag.tagID)
+            return (
+                <TouchableOpacity
+                    key={String(tag.tagID)}
+                    style={[styles.chip, selected && styles.chipSelected]}
+                    onPress={() => onToggle(tag.tagID)}
+                    activeOpacity={0.7}
+                >
+                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                        {tag.name}
+                    </Text>
+                </TouchableOpacity>
+            )
+        })}
+    </>
+
 export default function TagChips({ tags, selectedIDs, onToggle, horizontal = true }: Props) {
     if (tags.length === 0) return null
+    if (!horizontal) {
+        return (
+            <View style={[styles.container, styles.containerWrap]}>
+                <Chips tags={tags} selectedIDs={selectedIDs} onToggle={onToggle} />
+            </View>
+        )
+    }
     return (
         <ScrollView
-            horizontal={horizontal}
+            horizontal
             showsHorizontalScrollIndicator={false}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.container, horizontal ? styles.containerRow : styles.containerWrap]}
+            contentContainerStyle={[styles.container, styles.containerRow]}
             keyboardShouldPersistTaps="handled"
         >
-            {tags.map(tag => {
-                const selected = selectedIDs.has(tag.tagID)
-                return (
-                    <TouchableOpacity
-                        key={tag.tagID}
-                        style={[styles.chip, selected && styles.chipSelected]}
-                        onPress={() => onToggle(tag.tagID)}
-                        activeOpacity={0.7}
-                    >
-                        <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                            {tag.name}
-                        </Text>
-                    </TouchableOpacity>
-                )
-            })}
+            <Chips tags={tags} selectedIDs={selectedIDs} onToggle={onToggle} />
         </ScrollView>
     )
 }

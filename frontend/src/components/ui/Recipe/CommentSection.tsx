@@ -136,8 +136,8 @@ export default function CommentSection({ recipeID, currentUserID, isOwner, revie
                     await deleteRecipeReview(myReview.reviewID)
                     onReviewChange(reviews.filter(r => r.reviewID !== myReview.reviewID))
                 } else {
-                    const updated = await updateRecipeReview(myReview.reviewID, rating)
-                    onReviewChange(reviews.map(r => r.reviewID === myReview.reviewID ? updated : r))
+                    await updateRecipeReview(myReview.reviewID, rating)
+                    onReviewChange(reviews.map(r => r.reviewID === myReview.reviewID ? { ...r, rating } : r))
                 }
             } else {
                 const created = await addRecipeReview(recipeID, rating)

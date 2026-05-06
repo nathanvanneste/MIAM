@@ -1,5 +1,10 @@
 export function normalize(str: string): string {
-    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    return str
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\u0153/gi, 'oe')
+        .replace(/\u00e6/gi, 'ae')
+        .toLowerCase()
 }
 
 export function sortByMatch<T>(items: T[], query: string, getText: (item: T) => string): T[] {

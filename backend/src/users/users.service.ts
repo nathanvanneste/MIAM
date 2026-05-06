@@ -235,7 +235,10 @@ export class UsersService {
     });
 
     if (existing) {
-      throw new ConflictException('Friendship already exists');
+      if (existing.status !== 'REJECTED') {
+        throw new ConflictException('Friendship already exists');
+      }
+      await this.prisma.friendship.delete({ where: { friendshipID: existing.friendshipID } });
     }
 
     return this.prisma.friendship.create({
