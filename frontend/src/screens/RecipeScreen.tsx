@@ -6,12 +6,14 @@ import { ArrowLeft, X, Pencil, Share2, Bookmark, Camera, Clock, Flame } from "lu
 import { Colors } from "@/src/constants/colors";
 import { FontSize, FontWeight } from "@/src/constants/typography";
 import RecipeTabBar, { RecipeTab } from "@/src/components/ui/Recipe/RecipeTabBar";
+import CommentSection from "@/src/components/ui/Recipe/CommentSection";
 import IngredientsList from "@/src/components/ui/Recipe/IngredientsList";
 import PreparationList from "@/src/components/ui/Recipe/PreparationList";
 import EditHeaderSheet from "@/src/components/ui/Recipe/EditHeaderSheet";
 import PrimaryButton from "@/src/components/ui/PrimaryButton";
 import UserAvatar from "@/src/components/ui/UserAvatar";
 import { getRecipeById, updateRecipe, updateRecipePhoto, getSeedRecipeById, saveSeedRecipe } from "@/src/services/recipes.service";
+import type { RecipeReview } from "@/src/services/recipes.service";
 import { getTags } from "@/src/services/tags.service";
 import TagChips from "@/src/components/ui/TagChips";
 import { Tag } from "@/src/types/recipe";
@@ -61,6 +63,7 @@ export default function RecipeScreen({ recipeID }: RecipeScreenProps) {
   const [isSaved, setIsSaved] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [isSeedRecipe, setIsSeedRecipe] = useState(false);
+  const [reviews, setReviews] = useState<RecipeReview[]>([]);
 
   const hasUnsavedChanges = useRef(false);
   const recipeSnapshot = useRef<RecipeDetail | null>(null);
@@ -87,6 +90,7 @@ export default function RecipeScreen({ recipeID }: RecipeScreenProps) {
           setIsSaved(data.savedBy?.some(s => s.userID === currentUser.id) ?? false);
         }
         setSelectedTagIDs(data.tags?.map(t => t.tag.tagID) ?? [])
+        setReviews(data.reviews ?? [])
         if (data.photo) {
           if (data.photo.startsWith("http")) {
             setPhotoUrl(data.photo);
@@ -440,7 +444,7 @@ export default function RecipeScreen({ recipeID }: RecipeScreenProps) {
 
         {/* 1 — tab bar sticky */}
         <View style={styles.tabBarWrapper}>
-          <RecipeTabBar activeTab={tab} onTabChange={setTab} />
+          <RecipeTabBar activeTab={tab} onTabChange={setTab} showAvis={!isEditing} />
         </View>
 
         {/* 2 — contenu */}
@@ -457,10 +461,18 @@ export default function RecipeScreen({ recipeID }: RecipeScreenProps) {
               onEditIngredient={isEditing ? handleEditIngredient : undefined}
               onDeleteIngredient={isEditing ? handleDeleteIngredient : undefined}
             />
-          ) : (
+          ) : tab === "preparation" ? (
             <PreparationList
               steps={recipe.steps.map((s) => s.text)}
               onSave={isEditing ? handleSaveSteps : undefined}
+            />
+          ) : (
+            <CommentSection
+              recipeID={recipe.recipeID}
+              currentUserID={currentUser?.id ?? null}
+              isOwner={isOwner}
+              reviews={reviews}
+              onReviewChange={setReviews}
             />
           )}
         </View>

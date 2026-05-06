@@ -4,28 +4,32 @@ import { SquarePen } from "lucide-react-native";
 import { Colors } from "../../../constants/colors";
 import { FontSize, FontWeight } from "../../../constants/typography";
 
-export type RecipeTab = "ingredients" | "preparation";
+export type RecipeTab = "ingredients" | "preparation" | "avis";
 
 type RecipeTabBarProps = {
   activeTab: RecipeTab;
   onTabChange: (tab: RecipeTab) => void;
   onEdit?: () => void;
+  showAvis?: boolean;
 };
 
 const TABS: { key: RecipeTab; label: string }[] = [
   { key: "ingredients", label: "Ingrédients" },
   { key: "preparation", label: "Préparation" },
+  { key: "avis", label: "Avis" },
 ];
 
 export default function RecipeTabBar({
   activeTab,
   onTabChange,
   onEdit,
+  showAvis = true,
 }: RecipeTabBarProps) {
+  const visibleTabs = showAvis ? TABS : TABS.filter(t => t.key !== "avis");
   return (
     <View style={styles.wrapper}>
       <View style={styles.tabs}>
-        {TABS.map(({ key, label }) => {
+        {visibleTabs.map(({ key, label }) => {
           const isActive = activeTab === key;
           return (
             <Pressable
