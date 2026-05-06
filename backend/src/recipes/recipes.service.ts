@@ -110,12 +110,13 @@ export class RecipesService {
   }
 
   async create(userID: string, createRecipeDto: CreateRecipeDto) {
-    const { steps, ingredients, tagIDs, ...recipeData } =
+    const { steps, ingredients, tagIDs, description, ...recipeData } =
       createRecipeDto;
 
     return this.prisma.recipe.create({
       data: {
         ...recipeData,
+        description: description ?? '',
 
         creator: {
           connect: { userID },
@@ -496,15 +497,13 @@ export class RecipesService {
     });
   }
 
-  findMine(userID: string) {
+  findMine(userID: string, page = 1, limit = 20) {
     return this.prisma.recipe.findMany({
-      where: {
-        creatorID: userID,
-      },
+      where: { creatorID: userID },
       include: this.recipeInclude,
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
   }
 
@@ -531,7 +530,7 @@ export class RecipesService {
 
     const RECENT = 10;
     const recent = all.slice(0, RECENT);
-    const random = all.slice(RECENT).sort(() => Math.random() - 0.5);
+    const random = all.slice(RECENT).sort(() => Math.random() - 0.5).slice(0, 20);
 
     return { recent, random };
   }

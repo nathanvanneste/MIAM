@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { KeyboardAvoidingView } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as FileSystem from 'expo-file-system/legacy'
-import { ImagePlus, Clock, Users } from 'lucide-react-native'
+import { ImagePlus, Clock, Users, Flame } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from '@/src/constants'
 import { CreateRecipeDTO, Tag } from '@/src/types/recipe'
 import PortionCounter from '@/src/components/features/recipe/PortionCounter'
@@ -46,7 +46,7 @@ export default function CreateRecipeScreen() {
     const [allTags, setAllTags] = useState<Tag[]>([])
     const selectedTagIDs = new Set(form.tagIDs)
 
-    useEffect(() => { getTags().then(setAllTags).catch(() => {}) }, [])
+    useEffect(() => { getTags().then(setAllTags).catch(() => { }) }, [])
 
     const pickCover = () => {
         Alert.alert('Photo de couverture', undefined, [
@@ -173,7 +173,7 @@ export default function CreateRecipeScreen() {
                             </View>
                             <View style={styles.metaCard}>
                                 <View style={styles.metaLabelRow}>
-                                    <Clock size={11} color={Colors.primaryMuted} />
+                                    <Flame size={11} color={Colors.primaryMuted} />
                                     <Text style={styles.metaLabel}>Cuisson</Text>
                                 </View>
                                 <View style={styles.timeRow}>

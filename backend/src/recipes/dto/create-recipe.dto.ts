@@ -50,8 +50,9 @@ export class CreateRecipeDto {
   @IsInt()
   portion!: number;
 
+  @IsOptional()
   @IsString()
-  description!: string;
+  description?: string;
 
   @IsOptional()
   @IsArray()

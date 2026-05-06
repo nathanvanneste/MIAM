@@ -3,7 +3,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  ForbiddenException
+  ForbiddenException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 //import { CreateUserDto } from './dto/create-user.dto';
@@ -11,6 +12,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { CreateFriendshipDto } from './dto/create-friendship.dto';
 import { UpdateFriendshipStatusDto } from './dto/update-friendship-status.dto';
 import { CreateMyProfileDto } from './dto/create-my-profile.dto';
+import { createClient } from '@supabase/supabase-js';
 
 type AuthUser = {
   userID: string;
@@ -119,9 +121,14 @@ private readonly include = {
   async remove(userID: string) {
     await this.findOne(userID);
 
-    return this.prisma.user.delete({
-      where: { userID },
-    });
+    await this.prisma.user.delete({ where: { userID } });
+
+    const supabaseAdmin = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userID);
+    if (error) throw new InternalServerErrorException('Erreur suppression auth : ' + error.message);
   }
 
   async sendFriendRequest(requesterID: string, dto: CreateFriendshipDto) {    
@@ -360,7 +367,7 @@ private readonly include = {
     });
   }
 
-  async findRecipesByUser(userID: string) {
+  async findRecipesByUser(userID: string, page = 1, limit = 20) {
     return this.prisma.recipe.findMany({
       where: { creatorID: userID },
       include: {
@@ -371,6 +378,8 @@ private readonly include = {
         reviews: { include: { user: true } },
       },
       orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
   }
 

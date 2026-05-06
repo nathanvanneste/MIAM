@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
   Param,
@@ -72,8 +73,12 @@ export class UsersController {
   }
 
   @Get(':userID/recipes')
-  findUserRecipes(@Param('userID') userID: string) {
-    return this.usersService.findRecipesByUser(userID);
+  findUserRecipes(
+    @Param('userID') userID: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    return this.usersService.findRecipesByUser(userID, page, limit);
   }
 
   @Get(':userID')

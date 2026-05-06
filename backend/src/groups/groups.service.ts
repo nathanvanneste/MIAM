@@ -25,6 +25,7 @@ export class GroupsService {
         recipe: {
           include: {
             creator: true,
+            tags: { include: { tag: true } },
           },
         },
       },
@@ -258,9 +259,7 @@ export class GroupsService {
     });
 
     if (memberCount <= 1) {
-      throw new ForbiddenException(
-        "Vous ne pouvez pas quitter ce groupe car vous êtes le dernier membre.",
-      );
+      return this.prisma.groups.delete({ where: { groupID } });
     }
 
     return this.prisma.groupMember.delete({

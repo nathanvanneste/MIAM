@@ -1,12 +1,14 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
   Param,
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards
 } from '@nestjs/common';
@@ -43,8 +45,12 @@ export class RecipesController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  findMine(@Req() req: AuthenticatedRequest) {
-    return this.recipesService.findMine(req.user.userID);
+  findMine(
+    @Req() req: AuthenticatedRequest,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    return this.recipesService.findMine(req.user.userID, page, limit);
   }
 
   @UseGuards(JwtAuthGuard)
