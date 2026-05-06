@@ -24,7 +24,10 @@ export class GroupsController {
   constructor(private readonly groupsService: GroupsService) {}
 
   @Post()
-  create(@Req() req: AuthenticatedRequest, @Body() createGroupDto: CreateGroupDto) {
+  create(
+    @Req() req: AuthenticatedRequest,
+    @Body() createGroupDto: CreateGroupDto,
+  ) {
     return this.groupsService.create(req.user.userID, createGroupDto);
   }
 
@@ -70,7 +73,11 @@ export class GroupsController {
     @Param('groupID', ParseIntPipe) groupID: number,
     @Body() addGroupMemberDto: AddGroupMemberDto,
   ) {
-    return this.groupsService.addMember(req.user.userID, groupID, addGroupMemberDto);
+    return this.groupsService.addMember(
+      req.user.userID,
+      groupID,
+      addGroupMemberDto,
+    );
   }
 
   /*
@@ -90,12 +97,16 @@ export class GroupsController {
     @Param('groupID', ParseIntPipe) groupID: number,
     @Body() addGroupRecipeDto: AddGroupRecipeDto,
   ) {
-    return this.groupsService.addRecipe(req.user.userID, groupID, addGroupRecipeDto);
+    return this.groupsService.addRecipe(
+      req.user.userID,
+      groupID,
+      addGroupRecipeDto,
+    );
   }
 
   @Delete(':groupID/recipes/:recipeID')
   removeRecipe(
-     @Req() req: AuthenticatedRequest,
+    @Req() req: AuthenticatedRequest,
     @Param('groupID', ParseIntPipe) groupID: number,
     @Param('recipeID', ParseIntPipe) recipeID: number,
   ) {

@@ -22,6 +22,7 @@ import { SaveRecipeDto } from './dto/save-recipe.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateMyProfileDto } from './dto/create-my-profile.dto';
 import { UpdateMyAvatarDto } from './dto/update-my-avatar.dto';
+import { CreateUserPreferencesDto } from './dto/create-user-preferences.dto';
 
 @Controller('users')
 export class UsersController {
@@ -44,10 +45,7 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Patch('me')
-  updateMe(
-    @Req() req: AuthenticatedRequest,
-    @Body() dto: UpdateUserDto,
-  ) {
+  updateMe(@Req() req: AuthenticatedRequest, @Body() dto: UpdateUserDto) {
     return this.usersService.update(req.user.userID, dto);
   }
 
@@ -127,10 +125,7 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Post('me/saved-recipes')
-  saveRecipe(
-    @Req() req: AuthenticatedRequest,
-    @Body() dto: SaveRecipeDto,
-  ) {
+  saveRecipe(@Req() req: AuthenticatedRequest, @Body() dto: SaveRecipeDto) {
     return this.usersService.saveRecipe(req.user.userID, dto.recipeID);
   }
 
@@ -165,5 +160,20 @@ export class UsersController {
   @Get('me/sent-requests')
   getMySentRequests(@Req() req: AuthenticatedRequest) {
     return this.usersService.findMySentRequests(req.user.userID);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/preferences')
+  savePreferences(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateUserPreferencesDto,
+  ) {
+    return this.usersService.savePreferences(req.user.userID, dto.tagNames);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me/preferences')
+  getPreferences(@Req() req: AuthenticatedRequest) {
+    return this.usersService.getPreferences(req.user.userID);
   }
 }

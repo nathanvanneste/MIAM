@@ -3,7 +3,6 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import AvatarPicker from '@/src/components/ui/AvatarPicker'
 import { router } from "expo-router";
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react-native";
 import { RegisterDTO } from "../types/user";
 import { isPasswordValid, isEmailValid } from "../utils/validation"
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius, ComponentSize } from "../constants";
@@ -40,12 +39,12 @@ export default function RegisterScreen() {
             return
         }
         try {
-            await register(form)
-            Alert.alert(
-                'Compte créé !',
-                'Tu peux maintenant te connecter.',
-                [{ text: 'OK', onPress: () => router.back() }]
-            )
+                await register(form)
+                Alert.alert(
+                    'Compte créé !',
+                    'Choisis maintenant tes préférences pour personnaliser ton feed.',
+                    [{ text: 'OK', onPress: () => router.push('/preferences') }]
+                )
         } catch (e: any) {
             setError(e.message)
         }

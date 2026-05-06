@@ -45,6 +45,10 @@ export async function deleteMe(): Promise<void> {
   await apiFetch('/users/me', { method: 'DELETE' });
 }
 
+export async function getTags(): Promise<{ tagID: number; name: string }[]> {
+  return apiFetch('/tags', { method: 'GET' });
+}
+
 export async function getUserRecipes(userID: string, page = 1, limit = 20): Promise<Recipe[]> {
   return apiFetch(`/users/${userID}/recipes?page=${page}&limit=${limit}`, { method: 'GET' });
 }
@@ -69,4 +73,15 @@ export async function saveRecipe(recipeID: number): Promise<void> {
 
 export async function unsaveRecipe(recipeID: number): Promise<void> {
   await apiFetch(`/users/me/saved-recipes/${recipeID}`, { method: 'DELETE' });
+}
+
+export async function saveUserPreferences(tagNames: string[]): Promise<any> {
+  return apiFetch('/users/me/preferences', {
+    method: 'POST',
+    body: JSON.stringify({ tagNames }),
+  });
+}
+
+export async function getMyPreferences(): Promise<any> {
+  return apiFetch('/users/me/preferences', { method: 'GET' });
 }

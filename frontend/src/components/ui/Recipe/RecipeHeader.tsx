@@ -8,6 +8,7 @@ import { groupColor } from "@/src/utils/groupColor";
 type RecipeHeaderProps = {
   title: string;
   description?: string | null;
+  photo?: string | null;
   prepTime: string;
   cookTime: string;
   photoUrl?: string | null;
@@ -25,6 +26,7 @@ type RecipeHeaderProps = {
 export default function RecipeHeader({
   title,
   description,
+  photo,
   prepTime,
   cookTime,
   photoUrl,
@@ -129,6 +131,14 @@ export default function RecipeHeader({
 const styles = StyleSheet.create({
   header: {
     backgroundColor: Colors.background,
+  },
+
+  photoBanner: {
+    width: '100%',
+    height: 240,
+    borderRadius: 12,
+    marginBottom: 16,
+    backgroundColor: Colors.cardLight,
   },
 
   headerEditing: {

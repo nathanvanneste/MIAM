@@ -55,9 +55,7 @@ export class GroupsService {
     const isMember = group.members.some((member) => member.userID === userID);
 
     if (!isMember) {
-      throw new ForbiddenException(
-        "Vous n'avez pas accès à ce groupe.",
-      );
+      throw new ForbiddenException("Vous n'avez pas accès à ce groupe.");
     }
 
     return group;
@@ -134,7 +132,11 @@ export class GroupsService {
   }
   */
 
-  async addMember(userID: string, groupID: number, addGroupMemberDto: AddGroupMemberDto) {
+  async addMember(
+    userID: string,
+    groupID: number,
+    addGroupMemberDto: AddGroupMemberDto,
+  ) {
     await this.assertGroupMember(userID, groupID);
 
     const existingMember = await this.prisma.groupMember.findUnique({
@@ -186,7 +188,11 @@ export class GroupsService {
   }
   */
 
-  async addRecipe(userID: string, groupID: number, addGroupRecipeDto: AddGroupRecipeDto) {
+  async addRecipe(
+    userID: string,
+    groupID: number,
+    addGroupRecipeDto: AddGroupRecipeDto,
+  ) {
     await this.assertGroupMember(userID, groupID);
 
     const existingRecipe = await this.prisma.groupRecipe.findUnique({

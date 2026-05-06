@@ -6,5 +6,4 @@ export class CreateStepDto {
 
   @IsInt()
   order!: number;
-
 }

@@ -3,7 +3,7 @@ import { View, Text, FlatList, StyleSheet, ActivityIndicator, RefreshControl, us
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Users } from 'lucide-react-native'
 import { Colors, FontSize, FontWeight, Spacing } from '@/src/constants'
-import { FeedRecipe, getFeed } from '@/src/services/recipes.service'
+import { FeedRecipe, getFeed, getRecommendations } from '@/src/services/recipes.service'
 import { getTags } from '@/src/services/tags.service'
 import RecipeCard from '@/src/components/ui/Recipe/RecipeCard'
 import SearchBar from '@/src/components/ui/SearchBar'
@@ -17,6 +17,7 @@ const COL_GAP = Spacing.sm
 type FeedItem =
     | { type: 'header'; title: string }
     | { type: 'pair'; items: FeedRecipe[] }
+    | { type: 'recipe'; recipe: FeedRecipe }
     | { type: 'empty'; message: string }
 
 const toPairs = (recipes: FeedRecipe[]): FeedItem[] =>
@@ -25,13 +26,13 @@ const toPairs = (recipes: FeedRecipe[]): FeedItem[] =>
         items: recipes.slice(i * 2, i * 2 + 2),
     }))
 
-const buildItems = (recent: FeedRecipe[], random: FeedRecipe[], search: string): FeedItem[] => {
-    if (recent.length === 0 && random.length === 0) {
+const buildItems = (recent: FeedRecipe[], random: FeedRecipe[], recs: FeedRecipe[], search: string): FeedItem[] => {
+    if (recent.length === 0 && random.length === 0 && recs.length === 0) {
         return [{ type: 'empty', message: 'Ajoute des amis pour voir leurs recettes ici.' }]
     }
 
     if (search.trim()) {
-        const all = [...recent, ...random]
+        const all = [...recent, ...recs, ...random]
         const deduped = all.filter((r, i) => all.findIndex(x => x.recipeID === r.recipeID) === i)
         const filtered = sortByMatch(deduped, search, r => r.name)
         if (filtered.length === 0) return [{ type: 'empty', message: 'Aucune recette ne correspond.' }]
@@ -43,7 +44,10 @@ const buildItems = (recent: FeedRecipe[], random: FeedRecipe[], search: string):
         built.push({ type: 'header', title: 'Nouvelles recettes' })
         built.push(...toPairs(recent))
     }
-    if (random.length > 0) {
+    if (recs.length > 0) {
+        built.push({ type: 'header', title: 'Pour vous' })
+        built.push(...toPairs(recs))
+    } else if (random.length > 0) {
         built.push({ type: 'header', title: 'Découvrir' })
         built.push(...toPairs(random))
     }
@@ -60,6 +64,7 @@ export default function FeedScreen() {
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
     const [hasData, setHasData] = useState(false)
+    const [recs, setRecs] = useState<FeedRecipe[]>([])
     // titleSearchHeight: just the animated header (title + search bar)
     const [titleSearchHeight, setTitleSearchHeight] = useState(0)
     // tagsBarHeight: the always-visible tags strip
@@ -95,8 +100,10 @@ export default function FeedScreen() {
     const load = useCallback(async () => {
         try {
             const data = await getFeed()
+            const recRes = await getRecommendations().catch(() => ({ recommendations: [] }))
             setRecent(data.recent)
             setRandom(data.random)
+            setRecs(recRes.recommendations || [])
             setHasData(true)
         } catch {
             setHasData(false)
@@ -118,7 +125,7 @@ export default function FeedScreen() {
         filterTagIDs.size === 0 ? list : list.filter(r => r.tags?.some(t => filterTagIDs.has(t.tag.tagID)))
 
     const items: FeedItem[] = hasData
-        ? buildItems(applyTagFilter(recent), applyTagFilter(random), search)
+        ? buildItems(applyTagFilter(recent), applyTagFilter(random), applyTagFilter(recs), search)
         : [{ type: 'empty', message: 'Impossible de charger le fil.' }]
 
     const totalHeaderHeight = titleSearchHeight + tagsBarHeight
@@ -166,7 +173,7 @@ export default function FeedScreen() {
                 <FlatList
                     data={items}
                     keyExtractor={(item, i) =>
-                        item.type === 'pair' ? `pair-${item.items[0].recipeID}` : `${item.type}-${i}`
+                        item.type === 'pair' ? `pair-${item.items[0].recipeID}` : item.type === 'recipe' ? `recipe-${item.recipe.recipeID}` : `${item.type}-${i}`
                     }
                     contentContainerStyle={[styles.list, { paddingTop: totalHeaderHeight + Spacing.md }]}
                     showsVerticalScrollIndicator={false}
@@ -186,9 +193,18 @@ export default function FeedScreen() {
                                     <View style={styles.emptyIcon}>
                                         <Users size={36} color={Colors.primaryMuted} />
                                     </View>
-                                    <Text style={styles.emptyTitle}>Rien à voir pour l'instant</Text>
+                                    <Text style={styles.emptyTitle}>Rien à voir pour l&apos;instant</Text>
                                     <Text style={styles.emptyText}>{item.message}</Text>
                                 </View>
+                            )
+                        }
+                        if (item.type === 'recipe') {
+                            return (
+                                <RecipeCard
+                                    recipe={item.recipe}
+                                    cardWidth={cardWidth}
+                                    creator={item.recipe.creator}
+                                />
                             )
                         }
                         return (
