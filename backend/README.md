@@ -1,137 +1,112 @@
 # MIAM — Backend
 
-API REST développée avec **NestJS** et **TypeScript**, connectée à **Supabase** (PostgreSQL).
+API REST développée avec **NestJS** et **TypeScript**, connectée à **Supabase** (PostgreSQL + Auth + Storage) via **Prisma**.
 
 ## Prérequis
 
-- [Node.js](https://nodejs.org/) (v20.20 ou supérieur)
+- [Node.js](https://nodejs.org/) v20 ou supérieur
 - npm
-- Un projet Supabase créé sur [supabase.com](https://supabase.com)
+- Un projet [Supabase](https://supabase.com) (base de données + auth + storage)
 
 ## Variables d'environnement
-
-Créez un fichier `.env` à la racine du projet à partir du template :
 
 ```bash
 cp .env.example .env
 ```
 
-Remplissez ensuite vos valeurs dans `.env` :
-
 ```env
 PORT=3000
-SUPABASE_URL=your_supabase_url_here
-SUPABASE_ANON_KEY=your_supabase_anon_key_here
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+DATABASE_URL=postgresql://...          # URL de connexion directe Supabase
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...          # Ne jamais exposer publiquement
 ```
 
-> Les clés Supabase sont disponibles sur [supabase.com](https://supabase.com) → votre projet → **Settings → API**. La `SERVICE_ROLE_KEY` ne doit jamais être partagée publiquement ni envoyée au frontend.
+Les clés Supabase sont disponibles sur [supabase.com](https://supabase.com) → votre projet → **Settings → API**.
 
-## Project setup
+## Installation
 
 ```bash
-$ npm install
-
-$ npx prisma install 
-
-$ npx prisma generate 
-
+npm install
+npx prisma generate     # Génère le client Prisma (nécessite Node 20+)
+npx prisma db push      # Applique le schéma sur la base (première fois ou après modification)
 ```
 
-## If you want to push de the db scheme 
-```bash
-$ npx prisma db push
-
-```
-
-
-## Compile and run the project
+## Lancer le serveur
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm run start:dev    # Mode développement avec hot reload
+npm run start:prod   # Mode production (après npm run build)
 ```
 
 L'API est disponible sur `http://localhost:3000`.
 
-## Exposer l'API (accès depuis mobile)
+## Exposer l'API pour les appareils mobiles
 
-Pour tester l’application depuis un téléphone (Expo Go), il est nécessaire d’exposer l’API via un tunnel.
-
-### Installation de Cloudflare Tunnel
+Expo Go ne peut pas accéder à `localhost` depuis un téléphone. Utiliser un tunnel Cloudflare :
 
 ```bash
+# Installation (une seule fois)
 curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb
 sudo dpkg -i cloudflared.deb
-rm cloudflared.deb
-```
 
-### Lancement du tunnel (Dans un autre terminal)
-
-Après avoir démarré le backend (cf. `Compile and run the project`), lancer le tunnel :
-```bash
+# Lancement (dans un terminal séparé, après avoir démarré le backend)
 cloudflared tunnel --url http://localhost:3000
 ```
 
-Une URL publique sera générée, par exemple : `https://concentrate-jewelry-belief-phones.trycloudflare.com`
+Une URL publique est générée (ex : `https://xxxx.trycloudflare.com`). La renseigner dans `frontend/.env` (`EXPO_PUBLIC_API_URL`).
 
-Cette URL permet d’accéder à l’API depuis un appareil externe (téléphone, réseau différent, etc.)
+> L'URL change à chaque lancement du tunnel. Le terminal doit rester ouvert.
 
-- ⚠️ L’URL change à chaque lancement du tunnel
-- ⚠️ Le terminal doit rester ouvert pour que le tunnel reste actif
-
-
-
-
-## Run tests
+## Tests
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run test          # Tests unitaires
+npm run test:e2e      # Tests end-to-end
+npm run test:cov      # Couverture de code
 ```
 
 ## Architecture
 
 ```
 src/
-├── recipes/                  # Gestion des recettes
-│   ├── dto/                      # Validation des données entrantes
-│   ├── entities/                 # Définition du modèle
-│   ├── recipes.controller.ts     # Routes HTTP
-│   ├── recipes.service.ts        # Logique métier + appels Supabase
-│   └── recipes.module.ts
-├── ingredients/              # Gestion des ingrédients
-├── shopping-lists/           # Listes de courses partagées
-├── groups/                    # Équipes et membres
-├── users/                    # Utilisateurs
 ├── auth/                     # Vérification des tokens JWT Supabase
-├── common/
-│   ├── guards/               # AuthGuard, TeamGuard...
-│   ├── decorators/           # @CurrentUser(), @Public()...
-│   └── filters/              # Gestion globale des erreurs
-├── config/                   # Configuration Supabase et variables d'env
+├── prisma/                   # Service Prisma (connexion DB)
+├── data/                     # Recettes seed (cold start) + SeedRecipesService
+├── recipes/                  # Recettes : CRUD, feed, recommandations, avis, commentaires
+│   └── dto/                  # Validation des données entrantes
+├── ingredients/              # Ingrédients et recherche insensible aux accents
+├── users/                    # Utilisateurs, amis, recettes enregistrées, préférences
+│   └── dto/
+├── groups/                   # Groupes collaboratifs et membres
+│   └── dto/
+├── tags/                     # Tags de recettes
+├── shopping-lists/           # Listes de courses partagées par groupe
 ├── app.module.ts
 └── main.ts
 ```
 
-### Conventions
+## Principaux endpoints
 
-- Toute communication avec Supabase passe par les `service`, jamais depuis les `controller`
-- Les `dto` définissent et valident la structure des données reçues dans les requêtes
-- Les `entities` définissent la structure des données retournées
-- Toutes les routes sont protégées par le `AuthGuard` par défaut, sauf exceptions explicites avec `@Public()`
+| Méthode | Route | Description |
+|---|---|---|
+| `POST` | `/auth/register` | Inscription |
+| `GET` | `/users/me` | Profil de l'utilisateur connecté |
+| `GET` | `/users/me/friends` | Liste d'amis |
+| `POST` | `/users/me/friendships` | Envoyer une demande d'ami |
+| `GET` | `/recipes/feed` | Fil d'actualité (recettes amis) |
+| `GET` | `/recipes/recommendations` | Recommandations personnalisées (seed) |
+| `GET` | `/recipes/:id` | Détail d'une recette |
+| `POST` | `/recipes` | Créer une recette |
+| `GET` | `/recipes/:id/comments` | Commentaires d'une recette |
+| `POST` | `/recipes/:id/comments` | Ajouter un commentaire |
+| `POST` | `/recipes/:id/reviews` | Noter une recette |
+| `GET` | `/ingredients?search=xxx` | Recherche d'ingrédients (insensible aux accents) |
+| `GET` | `/groups/me` | Groupes de l'utilisateur |
+| `POST` | `/groups/:id/recipes` | Ajouter une recette à un groupe |
+| `GET` | `/tags` | Liste de tous les tags |
+
+Toutes les routes sont protégées par JWT (`Authorization: Bearer <token>`) sauf mention contraire.
 
 ## Stack technique
 
@@ -139,13 +114,7 @@ src/
 |---|---|
 | NestJS | Framework backend Node.js |
 | TypeScript | Typage statique |
-| Supabase | Base de données PostgreSQL + Auth + Storage + Realtime |
+| Prisma | ORM — modèles, migrations, requêtes DB |
+| Supabase | PostgreSQL + Auth JWT + Storage |
 | class-validator | Validation des DTOs |
-
-## Deployment
-
-A voir plus tard (cf docs description projet pour le choix de la techno)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+| Cloudflared | Tunnel pour exposer l'API en développement |
