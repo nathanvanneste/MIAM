@@ -21,26 +21,26 @@ export default function WelcomeScreen() {
 
     const handleSignIn = async () => {
         try {
-        if (!form.emailOrPseudo.trim() || !form.password.trim()) {
-            Alert.alert('Erreur', 'Veuillez remplir tous les champs.');
-            return;
-        }
+            if (!form.emailOrPseudo.trim() || !form.password.trim()) {
+                Alert.alert('Erreur', 'Veuillez remplir tous les champs.');
+                return;
+            }
 
-        await signIn(form.emailOrPseudo.trim(), form.password);
+            await signIn(form.emailOrPseudo.trim(), form.password);
 
-        const me = await apiFetch('/users/me');
-        console.log('Utilisateur connecté :', me);
+            const me = await apiFetch('/users/me');
+            console.log('Utilisateur connecté :', me);
 
-        router.replace('/(tabs)/profile');
+            router.replace('/(tabs)/profile');
         } catch (error) {
-        console.error('Erreur connexion :', error);
+            console.error('Erreur connexion :', error);
 
-        Alert.alert(
-            'Erreur de connexion',
-            error instanceof Error
-            ? error.message
-            : 'Impossible de se connecter.',
-        );
+            Alert.alert(
+                'Erreur de connexion',
+                error instanceof Error
+                    ? error.message
+                    : 'Impossible de se connecter.',
+            );
         }
     };
 
@@ -72,7 +72,7 @@ export default function WelcomeScreen() {
                             onChangeText={(text) => setForm({ ...form, emailOrPseudo: text })}
                         />
                         <PasswordInput onChangeText={(text) => setForm({ ...form, password: text })} />
-                        <TouchableOpacity onPress={() => Alert.alert('Trou de balle')}>
+                        <TouchableOpacity onPress={() => Alert.alert('Pas encore implementé, merci de contacter un administrateur.')}>
                             <Text style={styles.forgotPassword}>Mot de passe oublié ?</Text>
                         </TouchableOpacity>
 
